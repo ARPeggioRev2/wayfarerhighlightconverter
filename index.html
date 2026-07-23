@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Wayfarer データコンバーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --orange:    #eb6e15;
+  --orange-dim:#fef3ea;
+  --bg:        #f9f8f6;
+  --surface:   #ffffff;
+  --ink:       #111110;
+  --ink-2:     #5a5a55;
+  --ink-3:     #9a9a94;
+  --rule:      #e8e7e3;
+  --green:     #16a34a;
+  --sans:      'DM Sans', -apple-system, sans-serif;
+  --mono:      'JetBrains Mono', 'Menlo', monospace;
+}
+html { font-size: 16px; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ===== TOPBAR ===== */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+  padding: 0 20px;
+  height: 52px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.topbar-brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.brand-name {
+  font-size: 13px; font-weight: 700; color: var(--ink);
+  white-space: nowrap; letter-spacing: -0.02em;
+}
+.brand-name span { color: var(--orange); }
+.brand-tag {
+  font-family: var(--mono); font-size: 9px; font-weight: 500;
+  color: var(--ink-3); letter-spacing: 0.06em; text-transform: uppercase;
+  white-space: nowrap; display: none;
+}
+@media (min-width: 500px) { .brand-tag { display: block; } }
+.topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  height: 34px; padding: 0 14px;
+  font-family: var(--sans); font-size: 12px; font-weight: 600;
+  border-radius: 6px; border: none; cursor: pointer;
+  transition: background 0.12s, opacity 0.12s; white-space: nowrap;
+  -webkit-appearance: none;
+}
+.btn:active { opacity: 0.8; }
+.btn-fill   { background: var(--orange); color: #fff; }
+.btn-fill:hover { background: #d4620f; }
+.btn-outline { background: transparent; color: var(--ink-2); border: 1px solid var(--rule); }
+.btn-outline:hover { background: var(--bg); }
+
+/* ===== PAGE ===== */
+.page { max-width: 640px; margin: 0 auto; padding: 28px 20px 64px; }
+
+/* ===== MONTH STRIP ===== */
+.month-strip-wrap {
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 28px;
+}
+.month-strip-btn {
+  flex-shrink: 0; width: 36px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--ink-3);
+  background: none; border: none; cursor: pointer;
+  transition: color 0.12s; -webkit-appearance: none;
+  padding-bottom: 1px;
+}
+.month-strip-btn:hover { color: var(--orange); }
+.month-strip-btn:disabled { color: var(--rule); cursor: default; }
+.month-strip {
+  display: flex; gap: 0; overflow-x: auto; flex: 1;
+  scrollbar-width: none;
+}
+.month-strip::-webkit-scrollbar { display: none; }
+.m-tab {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  color: var(--ink-3);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; transition: color 0.12s, border-color 0.12s;
+  margin-bottom: -1px;
+  -webkit-appearance: none;
+}
+.m-tab:hover { color: var(--ink); }
+.m-tab.active { color: var(--orange); border-bottom-color: var(--orange); font-weight: 600; }
+
+/* ===== EMPTY ===== */
+.empty {
+  padding: 72px 24px; text-align: center;
+  border: 1px dashed var(--rule); border-radius: 10px; background: var(--surface);
+}
+.empty-eyebrow {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  color: var(--orange); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px;
+}
+.empty-title { font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+.empty-body { font-size: 13px; color: var(--ink-3); line-height: 1.7; max-width: 300px; margin: 0 auto 20px; }
+
+/* ===== DATA SHEET ===== */
+.sheet { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+
+.sheet-header {
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--rule);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap;
+}
+.sheet-month {
+  font-size: 20px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); line-height: 1.1;
+}
+.sheet-month-sub { font-size: 11px; color: var(--ink-3); margin-top: 3px; font-weight: 400; }
+.sheet-meta { display: flex; align-items: center; gap: 16px; }
+.agr-label { font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: 0.04em; }
+.agr-value { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--orange); }
+.btn-del {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--sans); font-size: 11px; font-weight: 600;
+  color: var(--ink-3); background: none; border: none; cursor: pointer;
+  padding: 4px 0; transition: color 0.12s; -webkit-appearance: none;
+}
+.btn-del:hover { color: #dc2626; }
+
+/* ===== METRIC ROWS ===== */
+.metric-row {
+  display: grid; grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 0 20px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--rule);
+  position: relative;
+  transition: background 0.1s;
+}
+.metric-row:last-child { border-bottom: none; }
+.metric-row:hover { background: var(--bg); }
+.metric-row.found { border-left: 2px solid var(--orange); padding-left: 18px; }
+.metric-row.missing { border-left: 2px solid transparent; }
+
+.metric-label {
+  font-size: 13px; font-weight: 500; color: var(--ink-2);
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+}
+.status-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+.dot-found   { background: var(--green); }
+.dot-missing { background: var(--rule); }
+
+.metric-input {
+  font-family: var(--mono); font-size: 15px; font-weight: 600;
+  color: var(--ink); text-align: right;
+  width: 120px; background: transparent;
+  border: 1px solid transparent; border-radius: 5px;
+  padding: 6px 8px; outline: none;
+  transition: background 0.12s, border-color 0.12s;
+  -webkit-appearance: none; font-size: 16px;
+}
+.metric-input:hover { border-color: var(--rule); background: var(--surface); }
+.metric-input:focus { border-color: var(--orange); background: var(--surface); box-shadow: 0 0 0 3px rgba(235,110,21,0.1); }
+
+/* Sheet footer legend */
+.sheet-footer {
+  padding: 10px 20px;
+  border-top: 1px solid var(--rule);
+  display: flex; gap: 16px; background: var(--bg);
+}
+.legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+}
+
+/* ===== MODAL ===== */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(17,17,16,0.5); backdrop-filter: blur(6px);
+  z-index: 60; align-items: flex-end; justify-content: center;
+}
+@media (min-width: 500px) { .overlay { align-items: center; padding: 20px; } }
+.overlay.show { display: flex; }
+.modal {
+  background: var(--surface); width: 100%; max-width: 480px;
+  border-radius: 14px 14px 0 0; padding: 24px 20px 32px;
+  display: flex; flex-direction: column;
+  max-height: 90vh; overflow-y: auto;
+  animation: slide-up 0.2s ease;
+  -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 500px) {
+  .modal { border-radius: 14px; padding: 28px; max-height: 85vh; }
+}
+@keyframes slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-handle { width: 36px; height: 4px; background: var(--rule); border-radius: 99px; margin: 0 auto 20px; flex-shrink: 0; }
+@media (min-width: 500px) { .modal-handle { display: none; } }
+.modal-title { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 6px; flex-shrink: 0; }
+.modal-desc  { font-size: 12px; color: var(--ink-3); line-height: 1.7; margin-bottom: 16px; flex-shrink: 0; }
+.modal-textarea {
+  width: 100%;
+  height: 28vh;
+  min-height: 100px;
+  padding: 14px; background: var(--bg); border: 1px solid var(--rule); border-radius: 8px;
+  font-family: var(--mono); font-size: 16px; line-height: 1.65;
+  color: var(--ink); resize: none; outline: none; transition: border-color 0.12s;
+  overflow-y: auto; flex-shrink: 0;
+}
+.modal-textarea:focus { border-color: var(--orange); }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; flex-shrink: 0; }
+.modal-actions .btn { flex: 1; height: 42px; font-size: 13px; }
+
+
+.confirm-box {
+  background: var(--surface); border-radius: 14px;
+  padding: 24px 20px; max-width: 310px; width: 100%; text-align: center;
+  animation: slide-up 0.18s ease;
+}
+.confirm-title { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+.confirm-body  { font-size: 12px; color: var(--ink-3); line-height: 1.7; margin-bottom: 20px; }
+.confirm-actions { display: flex; gap: 8px; }
+.confirm-actions .btn { flex: 1; height: 40px; font-size: 12px; }
+.btn-danger { background: #fee2e2; color: #dc2626; border: none; }
+.btn-danger:hover { background: #fecaca; }
+
+/* ===== TOAST ===== */
+.toast {
+  position: fixed; bottom: 20px; left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  background: var(--ink); color: #fff;
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  padding: 9px 16px; border-radius: 6px; letter-spacing: 0.02em;
+  opacity: 0; transition: opacity 0.18s, transform 0.18s;
+  pointer-events: none; z-index: 200; white-space: nowrap;
+  display: flex; align-items: center; gap: 8px;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast-mark { color: var(--orange); }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <div class="brand-name">Wayfarer <span>活動ハイライト</span></div>
+    <div class="brand-tag">Mail Import · CSV Export</div>
+    <div style="font-family:var(--mono);font-size:9px;font-weight:600;color:#fff;background:var(--orange);padding:2px 6px;border-radius:4px;letter-spacing:0.04em;flex-shrink:0;">β 0.1</div>
+  </div>
+  <div class="topbar-actions">
+    <button class="btn btn-fill" onclick="openImportModal()">
+      <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+      メール貼付
+    </button>
+    <button class="btn btn-outline" onclick="downloadCSV()">
+      <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      CSV出力
+    </button>
+  </div>
+</div>
+
+<!-- PAGE -->
+<div class="page">
+
+  <!-- MONTH STRIP -->
+  <div class="month-strip-wrap" id="monthStripWrap" style="display:none">
+    <button class="month-strip-btn" id="btnPrev" onclick="stepMonth(-1)" title="前の月">‹</button>
+    <div class="month-strip" id="monthStrip"></div>
+    <button class="month-strip-btn" id="btnNext" onclick="stepMonth(1)" title="次の月">›</button>
+  </div>
+
+  <!-- EMPTY -->
+  <div class="empty" id="emptyState">
+    <div class="empty-eyebrow">No data</div>
+    <div class="empty-title">データがありません</div>
+    <div class="empty-body">「メール貼付」から Wayfarer 活動ハイライトのメール本文を貼り付けてください。</div>
+    <button class="btn btn-fill" onclick="openImportModal()">メールを読み込む</button>
+  </div>
+
+  <!-- DATA SHEET -->
+  <div class="sheet" id="sheet" style="display:none">
+    <div class="sheet-header">
+      <div>
+        <div class="sheet-month" id="sheetMonth">----年--月</div>
+        <div class="sheet-month-sub">抽出データ ／ 数値は直接編集できます</div>
+      </div>
+      <div class="sheet-meta">
+        <div id="agrWrap" style="display:none">
+          <div class="agr-label">Agreement</div>
+          <div class="agr-value" id="agrValue">0%</div>
+        </div>
+        <button class="btn-del" onclick="requestDelete()">
+          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+          削除
+        </button>
+      </div>
+    </div>
+    <div id="metricRows"></div>
+    <div class="sheet-footer">
+      <div class="legend-item"><span class="status-dot dot-found"></span>抽出済み</div>
+      <div class="legend-item"><span class="status-dot dot-missing"></span>未検出（手入力可）</div>
+    </div>
+  </div>
+
+</div>
+
+<footer style="max-width:640px;margin:0 auto;padding:0 20px 40px;border-top:1px solid var(--rule);margin-top:40px;">
+  <p style="font-size:11px;color:var(--ink-3);line-height:1.8;padding-top:20px;">
+    本ツールは運営とは無関係の非公式ツールです。いかなる企業・団体による公認・後援も受けていません。ご利用はご自身の責任においてお願いします。<br>
+    入力されたデータはお使いのブラウザ内にのみ保存され、外部へ送信されることはありません。
+  </p>
+</footer>
+<div class="overlay" id="importOverlay" onclick="overlayClick(event,'importOverlay')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">メール本文を読み込む</div>
+    <div class="modal-desc">「Wayfarer活動ハイライト」メールを全文コピーし、そのまま貼り付けてください。</div>
+    <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--rule);border-radius:7px;padding:9px 12px;margin-bottom:14px;flex-shrink:0;">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--ink-2);flex:1;word-break:break-all;line-height:1.4;">from:nianticlabs.com "Wayfarer活動ハイライト"</span>
+      <button id="kwCopyBtn" onclick="copyKeyword()" style="flex-shrink:0;font-family:var(--sans);font-size:11px;font-weight:600;color:var(--orange);background:none;border:none;cursor:pointer;padding:2px 0;white-space:nowrap;">コピー</button>
+    </div>
+    <textarea class="modal-textarea" id="mailInput"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeImportModal()">キャンセル</button>
+      <button class="btn btn-fill" onclick="extractMailData()">抽出する</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV PREVIEW MODAL -->
+<div class="overlay" id="csvOverlay" onclick="overlayClick(event,'csvOverlay')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">CSVデータ</div>
+    <div class="modal-desc">下のテキストを全選択してコピーし、メモアプリなどに貼り付けて .csv として保存してください。</div>
+    <textarea class="modal-textarea" id="csvPreview" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('csvOverlay').classList.remove('show')">閉じる</button>
+      <button class="btn btn-fill" id="copyBtn" onclick="copyCSV()">コピー</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle">削除しますか？</div>
+    <div class="confirm-body" id="confirmBody"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline" onclick="closeConfirm()">キャンセル</button>
+      <button class="btn btn-danger" onclick="executeDelete()">削除</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"><span class="toast-mark">▸</span><span id="toastText"></span></div>
+
+<script>
+const STORAGE_KEY = 'wayfarer_converter_v4';
+let db = {};
+let currentKey = '';
+let lastFoundIds = new Set();
+
+const METRICS = [
+  { id: 'visits',       label: '訪問数' },
+  { id: 'players',      label: 'プレイヤー人数' },
+  { id: 'approved',     label: '承認された候補' },
+  { id: 'new_wayspots', label: 'New Wayspots' },
+  { id: 'new_areas',    label: '追加された新エリア' },
+  { id: 'edits',        label: '承認された編集' },
+  { id: 'reviewed',     label: '審査件数' },
+  { id: 'agreed_num',   label: 'アグリーメント' },
+];
+
+const emptyStats = () => ({ visits:0, players:0, approved:0, new_wayspots:0, new_areas:0, edits:0, reviewed:0, agreed_num:0 });
+const persist = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+const sortedKeys = () => Object.keys(db).sort();
+const ky = k => k.split('-')[0];
+const km = k => k.split('-')[1];
+
+function init() {
+  try { const s = localStorage.getItem(STORAGE_KEY); if (s) db = JSON.parse(s); } catch(e) {}
+  const keys = sortedKeys();
+  if (keys.length) currentKey = keys[keys.length - 1];
+  render();
+}
+
+// ===== RENDER =====
+function render() {
+  const keys = sortedKeys();
+  const has = keys.length > 0;
+  document.getElementById('monthStripWrap').style.display = has ? '' : 'none';
+  document.getElementById('emptyState').style.display = has ? 'none' : '';
+  document.getElementById('sheet').style.display = has ? '' : 'none';
+  if (!has) return;
+
+  // Month tabs — show year only when multiple years exist
+  const years = [...new Set(keys.map(k => ky(k)))];
+  const showYear = years.length > 1;
+  const strip = document.getElementById('monthStrip');
+  strip.innerHTML = '';
+  keys.forEach(k => {
+    const btn = document.createElement('button');
+    btn.className = 'm-tab' + (k === currentKey ? ' active' : '');
+    btn.textContent = showYear ? `${ky(k)}/${parseInt(km(k))}月` : `${parseInt(km(k))}月`;
+    btn.title = k;
+    btn.onclick = () => { currentKey = k; lastFoundIds = new Set(); render(); };
+    strip.appendChild(btn);
+  });
+
+  // Header
+  document.getElementById('sheetMonth').textContent = `${ky(currentKey)}年${parseInt(km(currentKey))}月`;
+
+  // 矢印ボタンの活性状態
+  const idx = keys.indexOf(currentKey);
+  document.getElementById('btnPrev').disabled = idx <= 0;
+  document.getElementById('btnNext').disabled = idx >= keys.length - 1;
+
+  // アクティブタブをスクロール表示
+  setTimeout(() => {
+    const activeTab = document.querySelector('.m-tab.active');
+    if (activeTab) activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, 50);
+
+  // Rows
+  const data = db[currentKey] || emptyStats();
+  renderRows(data);
+  renderAgreement(data);
+}
+
+function stepMonth(delta) {
+  const keys = sortedKeys();
+  const idx = keys.indexOf(currentKey);
+  const next = idx + delta;
+  if (next < 0 || next >= keys.length) return;
+  currentKey = keys[next];
+  lastFoundIds = new Set();
+  render();
+}
+
+// キーボード矢印キー
+document.addEventListener('keydown', e => {
+  if (document.querySelector('.overlay.show')) return; // モーダル中は無効
+  if (e.key === 'ArrowLeft')  stepMonth(-1);
+  if (e.key === 'ArrowRight') stepMonth(1);
+});
+
+function renderRows(data) {
+  const container = document.getElementById('metricRows');
+  container.innerHTML = '';
+  METRICS.forEach(metric => {
+    const found = lastFoundIds.has(metric.id);
+    const row = document.createElement('div');
+    row.className = 'metric-row ' + (found ? 'found' : 'missing');
+
+    const label = document.createElement('div');
+    label.className = 'metric-label';
+    const dot = document.createElement('span');
+    dot.className = 'status-dot ' + (found ? 'dot-found' : 'dot-missing');
+    label.appendChild(dot);
+    label.appendChild(document.createTextNode(metric.label));
+    row.appendChild(label);
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.min = '0';
+    input.value = data[metric.id] || 0;
+    input.className = 'metric-input';
+    input.dataset.id = metric.id;
+    input.addEventListener('change', function() {
+      const val = Math.max(0, parseInt(this.value) || 0);
+      this.value = val;
+      db[currentKey][this.dataset.id] = val;
+      persist();
+      renderAgreement(db[currentKey]);
+    });
+    row.appendChild(input);
+    container.appendChild(row);
+  });
+}
+
+function renderAgreement(data) {
+  const wrap = document.getElementById('agrWrap');
+  if (data && data.reviewed > 0) {
+    document.getElementById('agrValue').textContent = ((data.agreed_num / data.reviewed) * 100).toFixed(1) + '%';
+    wrap.style.display = '';
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+// ===== EXTRACT =====
+function extractMailData() {
+  const text = document.getElementById('mailInput').value.trim();
+  if (!text) return;
+
+  const now = new Date();
+  let targetKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const dm = text.match(/(\d{4})[-\/年](\d{1,2})[-\/月]/);
+  if (dm) targetKey = `${dm[1]}-${dm[2].padStart(2,'0')}`;
+
+  if (!db[targetKey]) db[targetKey] = emptyStats();
+  const data = db[targetKey];
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  const getValueBefore = kw => {
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].includes(kw) && /^[\d,]+$/.test(lines[i-1]))
+        return parseInt(lines[i-1].replace(/,/g,''));
+    }
+    return null;
+  };
+  const getValueInline = kw => {
+    const r = new RegExp(`${kw}[\\s：:]*([\\d,]+)|([\\d,]+)[\\s]*${kw}`, 'i');
+    const m = text.match(r);
+    return m ? parseInt((m[1]||m[2]).replace(/,/g,'')) : null;
+  };
+  const extract = kw => getValueBefore(kw) ?? getValueInline(kw);
+
+  const found = new Set();
+  const set = (id, val) => { if (val !== null) { data[id] = val; found.add(id); } };
+
+  set('visits',       extract('訪問数'));
+  set('players',      extract('プレイヤー人数'));
+  set('approved',     extract('承認された候補'));
+  set('new_wayspots', extract('New Wayspots'));
+  set('new_areas',    extract('追加された新エリア') ?? extract('新エリア'));
+  set('edits',        extract('承認された編集'));
+  set('reviewed',     extract('審査件数'));
+
+  const aLine = lines.find(l => l.includes('意見が一致しました'));
+  if (aLine) {
+    const am = aLine.match(/審査\s*(\d+)\s*件/);
+    if (am) { data.agreed_num = parseInt(am[1]); found.add('agreed_num'); }
+  } else {
+    set('agreed_num', extract('アグリーメント数') ?? extract('審査一致数'));
+  }
+
+  lastFoundIds = found;
+  persist();
+  currentKey = targetKey;
+  document.getElementById('mailInput').value = '';
+  closeImportModal();
+  render();
+  showToast(`${ky(targetKey)}年${parseInt(km(targetKey))}月 — ${found.size}/${METRICS.length}項目取得`);
+}
+
+// ===== DELETE =====
+function requestDelete() {
+  if (!currentKey) return;
+  document.getElementById('confirmTitle').textContent = 'データを削除';
+  document.getElementById('confirmBody').textContent = `${ky(currentKey)}年${parseInt(km(currentKey))}月のデータを削除します。この操作は元に戻せません。`;
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); }
+function executeDelete() {
+  closeConfirm();
+  delete db[currentKey];
+  lastFoundIds = new Set();
+  const keys = sortedKeys();
+  currentKey = keys.length ? keys[keys.length - 1] : '';
+  persist(); render();
+  showToast('削除しました');
+}
+
+// ===== CSV =====
+let _csvText = '';
+
+function buildCSV() {
+  const keys = sortedKeys();
+  if (!keys.length) return '';
+  let csv = '\uFEFF年月,訪問数,プレイヤー人数,承認された候補,New Wayspots,追加された新エリア,承認された編集,審査件数,アグリーメント数\n';
+  keys.forEach(k => {
+    const d = db[k];
+    csv += `${k},${d.visits||0},${d.players||0},${d.approved||0},${d.new_wayspots||0},${d.new_areas||0},${d.edits||0},${d.reviewed||0},${d.agreed_num||0}\n`;
+  });
+  return csv;
+}
+
+async function downloadCSV() {
+  if (!sortedKeys().length) { showToast('データがありません'); return; }
+  _csvText = buildCSV();
+  const fileName = 'Wayfarer_Activity_Report.csv';
+  const blob = new Blob([_csvText], { type: 'text/csv' });
+  const file = new File([blob], fileName, { type: 'text/csv' });
+
+  // 1: iOS ネイティブシェアシート
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: fileName }); return; }
+    catch (e) { if (e.name === 'AbortError') return; }
+  }
+
+  // 2: デスクトップダウンロード（iOS/WKWebViewではスキップ）
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if (!isIOS) {
+    try {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      showToast('CSV出力しました'); return;
+    } catch(e) {}
+  }
+
+  // 3: コピーモーダル（最終フォールバック）
+  showCSVModal();
+}
+
+function showCSVModal() {
+  document.getElementById('csvPreview').value = _csvText.replace(/^\uFEFF/, '');
+  document.getElementById('csvOverlay').classList.add('show');
+  document.getElementById('copyBtn').textContent = 'コピー';
+  setTimeout(() => {
+    const ta = document.getElementById('csvPreview');
+    ta.focus(); ta.select();
+  }, 100);
+}
+
+async function copyCSV() {
+  const btn = document.getElementById('copyBtn');
+  copyText(_csvText.replace(/^\uFEFF/, ''), btn);
+}
+
+async function copyKeyword() {
+  const kw = 'from:nianticlabs.com "Wayfarer活動ハイライト"';
+  const btn = document.getElementById('kwCopyBtn');
+  copyText(kw, btn);
+}
+
+function copyText(text, btn) {
+  // execCommand fallback（WKWebView対応）
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try {
+    document.execCommand('copy');
+    if (btn) {
+      btn.textContent = '✓ コピー済み';
+      setTimeout(() => { btn.textContent = 'コピー'; }, 2000);
+    }
+  } catch(e) { showToast('コピーに失敗しました'); }
+  document.body.removeChild(ta);
+}
+
+function openImportModal() {
+  const now = new Date();
+  const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const ly = lm.getFullYear(), lmo = lm.getMonth() + 1;
+  const lastDay = new Date(ly, lmo, 0).getDate();
+  document.getElementById('mailInput').placeholder =
+    `例：\n${ly}年${lmo}月1日〜${ly}年${lmo}月${lastDay}日\nWayfarer活動ハイライト\n389389\n訪問数\n389389件訪問しました\n...`;
+  document.getElementById('importOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('mailInput').focus(), 60);
+}
+function closeImportModal() { document.getElementById('importOverlay').classList.remove('show'); }
+function overlayClick(e, id) { if (e.target.id === id) document.getElementById(id).classList.remove('show'); }
+
+// ===== TOAST =====
+let _tt;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  document.getElementById('toastText').textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_tt);
+  _tt = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
