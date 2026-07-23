@@ -1,0 +1,2 @@
+# wayfarerhighlightconverter
+wayfarer活動ハイライトを貼り付けてデータ抽出しCSVで出力
