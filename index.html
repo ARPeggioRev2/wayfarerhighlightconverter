@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Wayfarer データコンバーター</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -18,12 +18,13 @@
   --ink-3:     #9a9a94;
   --rule:      #e8e7e3;
   --green:     #16a34a;
-  --sans:      'DM Sans', -apple-system, sans-serif;
-  --mono:      'JetBrains Mono', 'Menlo', monospace;
+  --sans:      'Noto Sans JP', sans-serif;
+  --mono:      'Noto Sans JP', sans-serif;
 }
 html { font-size: 16px; }
 body {
   font-family: var(--sans);
+  font-weight: 500;
   background: var(--bg);
   color: var(--ink);
   min-height: 100vh;
@@ -164,18 +165,66 @@ body {
 .dot-missing { background: var(--rule); }
 
 .metric-input {
-  font-family: var(--mono); font-size: 15px; font-weight: 600;
+  font-family: var(--sans); font-size: 16px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: var(--ink); text-align: right;
   width: 120px; background: transparent;
   border: 1px solid transparent; border-radius: 5px;
   padding: 6px 8px; outline: none;
   transition: background 0.12s, border-color 0.12s;
-  -webkit-appearance: none; font-size: 16px;
+  -webkit-appearance: none;
 }
 .metric-input:hover { border-color: var(--rule); background: var(--surface); }
 .metric-input:focus { border-color: var(--orange); background: var(--surface); box-shadow: 0 0 0 3px rgba(235,110,21,0.1); }
 
-/* Sheet footer legend */
+/* 比較モード */
+.metric-row.comparing { grid-template-columns: 1fr 76px 100px 56px; }
+.compare-val {
+  font-family: var(--sans); font-size: 14px; font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3); text-align: right; padding: 0 6px;
+}
+.delta-badge {
+  font-family: var(--sans); font-size: 11px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right; white-space: nowrap;
+}
+.delta-up   { color: var(--orange); }
+.delta-down { color: var(--ink-3); }
+.delta-none { color: var(--rule); }
+.col-header {
+  display: none; grid-template-columns: 1fr 80px 110px 58px;
+  padding: 6px 20px 6px;
+  border-bottom: 1px solid var(--rule);
+  background: var(--bg);
+}
+.col-header.show { display: grid; }
+.col-header span {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  color: var(--ink-3); text-align: right; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.col-header span:first-child { text-align: left; }
+
+/* 比較セレクト */
+.compare-select-wrap {
+  display: flex; align-items: center; gap: 6px;
+}
+.compare-label {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  color: var(--ink-3); letter-spacing: 0.06em; text-transform: uppercase;
+}
+.compare-select {
+  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  color: var(--ink); background: var(--bg);
+  border: 1px solid var(--rule); border-radius: 5px;
+  padding: 4px 6px; outline: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  padding-right: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239a9a94' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+}
+.compare-select:focus { border-color: var(--orange); }
 .sheet-footer {
   padding: 10px 20px;
   border-top: 1px solid var(--rule);
@@ -257,8 +306,6 @@ body {
 <div class="topbar">
   <div class="topbar-brand">
     <div class="brand-name">Wayfarer <span>活動ハイライト</span></div>
-    <div class="brand-tag">Mail Import · CSV Export</div>
-    <div style="font-family:var(--mono);font-size:9px;font-weight:600;color:#fff;background:var(--orange);padding:2px 6px;border-radius:4px;letter-spacing:0.04em;flex-shrink:0;">β 0.1</div>
   </div>
   <div class="topbar-actions">
     <button class="btn btn-fill" onclick="openImportModal()">
@@ -298,6 +345,12 @@ body {
         <div class="sheet-month-sub">抽出データ ／ 数値は直接編集できます</div>
       </div>
       <div class="sheet-meta">
+        <div class="compare-select-wrap">
+          <span class="compare-label">比較</span>
+          <select class="compare-select" id="compareSelect" onchange="onCompareChange(this.value)">
+            <option value="">—</option>
+          </select>
+        </div>
         <div id="agrWrap" style="display:none">
           <div class="agr-label">Agreement</div>
           <div class="agr-value" id="agrValue">0%</div>
@@ -307,6 +360,12 @@ body {
           削除
         </button>
       </div>
+    </div>
+    <div class="col-header" id="colHeader">
+      <span>評価項目</span>
+      <span id="colCompare">—</span>
+      <span id="colCurrent">—</span>
+      <span>増減</span>
     </div>
     <div id="metricRows"></div>
     <div class="sheet-footer">
@@ -375,6 +434,8 @@ let db = {};
 let currentKey = '';
 let lastFoundIds = new Set();
 
+let compareKey = '';
+
 const METRICS = [
   { id: 'visits',       label: '訪問数' },
   { id: 'players',      label: 'プレイヤー人数' },
@@ -408,9 +469,33 @@ function render() {
   document.getElementById('sheet').style.display = has ? '' : 'none';
   if (!has) return;
 
-  // Month tabs — show year only when multiple years exist
+  // 比較セレクトを更新
   const years = [...new Set(keys.map(k => ky(k)))];
   const showYear = years.length > 1;
+  const sel = document.getElementById('compareSelect');
+  const prevCompare = compareKey;
+  sel.innerHTML = `<option value="">${compareKey ? '— なし' : '月を選ぶ'}</option>`;
+  keys.filter(k => k !== currentKey).forEach(k => {
+    const opt = document.createElement('option');
+    opt.value = k;
+    opt.textContent = showYear ? `${ky(k)}/${parseInt(km(k))}月` : `${parseInt(km(k))}月`;
+    sel.appendChild(opt);
+  });
+  // compareKeyが現在月になった場合はリセット
+  if (compareKey === currentKey) compareKey = '';
+  sel.value = compareKey;
+
+  // 列ヘッダー
+  const comparing = !!compareKey;
+  document.getElementById('colHeader').classList.toggle('show', comparing);
+  if (comparing) {
+    document.getElementById('colCompare').textContent =
+      showYear ? `${ky(compareKey)}/${parseInt(km(compareKey))}月` : `${parseInt(km(compareKey))}月`;
+    document.getElementById('colCurrent').textContent =
+      showYear ? `${ky(currentKey)}/${parseInt(km(currentKey))}月` : `${parseInt(km(currentKey))}月`;
+  }
+
+  // Month tabs — show year only when multiple years exist
   const strip = document.getElementById('monthStrip');
   strip.innerHTML = '';
   keys.forEach(k => {
@@ -459,14 +544,36 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowRight') stepMonth(1);
 });
 
+function onCompareChange(val) {
+  compareKey = val;
+  // 空オプションのラベルを状態に応じて切り替え
+  const sel = document.getElementById('compareSelect');
+  if (sel.options[0]) sel.options[0].textContent = val ? '— なし' : '月を選ぶ';
+  const data = db[currentKey] || emptyStats();
+  const years = [...new Set(sortedKeys().map(k => ky(k)))];
+  const showYear = years.length > 1;
+  const comparing = !!compareKey;
+  document.getElementById('colHeader').classList.toggle('show', comparing);
+  if (comparing) {
+    document.getElementById('colCompare').textContent =
+      showYear ? `${ky(compareKey)}/${parseInt(km(compareKey))}月` : `${parseInt(km(compareKey))}月`;
+    document.getElementById('colCurrent').textContent =
+      showYear ? `${ky(currentKey)}/${parseInt(km(currentKey))}月` : `${parseInt(km(currentKey))}月`;
+  }
+  renderRows(data);
+}
+
 function renderRows(data) {
   const container = document.getElementById('metricRows');
   container.innerHTML = '';
+  const cmpData = compareKey ? (db[compareKey] || emptyStats()) : null;
+
   METRICS.forEach(metric => {
     const found = lastFoundIds.has(metric.id);
     const row = document.createElement('div');
-    row.className = 'metric-row ' + (found ? 'found' : 'missing');
+    row.className = 'metric-row ' + (found ? 'found' : 'missing') + (cmpData ? ' comparing' : '');
 
+    // ラベル
     const label = document.createElement('div');
     label.className = 'metric-label';
     const dot = document.createElement('span');
@@ -475,11 +582,20 @@ function renderRows(data) {
     label.appendChild(document.createTextNode(metric.label));
     row.appendChild(label);
 
+    // 比較月の値（読み取り専用）
+    if (cmpData) {
+      const cmp = document.createElement('div');
+      cmp.className = 'compare-val';
+      cmp.textContent = (cmpData[metric.id] || 0).toLocaleString();
+      row.appendChild(cmp);
+    }
+
+    // 現在月の値（編集可能）
     const input = document.createElement('input');
-    input.type = 'number';
-    input.min = '0';
+    input.type = 'number'; input.min = '0';
     input.value = data[metric.id] || 0;
     input.className = 'metric-input';
+    if (cmpData) input.style.width = '100px';
     input.dataset.id = metric.id;
     input.addEventListener('change', function() {
       const val = Math.max(0, parseInt(this.value) || 0);
@@ -487,10 +603,49 @@ function renderRows(data) {
       db[currentKey][this.dataset.id] = val;
       persist();
       renderAgreement(db[currentKey]);
+      if (cmpData) {
+        const badge = this.parentElement.querySelector('.delta-badge');
+        if (badge) updateDelta(badge, val, cmpData[metric.id] || 0);
+      }
     });
     row.appendChild(input);
+
+    // 増減バッジ
+    if (cmpData) {
+      const badge = document.createElement('div');
+      badge.className = 'delta-badge';
+      updateDelta(badge, data[metric.id] || 0, cmpData[metric.id] || 0);
+      row.appendChild(badge);
+    }
+
     container.appendChild(row);
   });
+}
+
+function updateDelta(el, cur, prev) {
+  if (prev === 0 && cur === 0) {
+    el.textContent = '—'; el.className = 'delta-badge delta-none'; return;
+  }
+  if (prev === 0) {
+    el.textContent = 'NEW'; el.className = 'delta-badge delta-up'; return;
+  }
+  if (cur < prev) {
+    // 減少は常に%
+    const pct = ((prev - cur) / prev * 100).toFixed(1);
+    el.textContent = `↓${pct}%`;
+    el.className = 'delta-badge delta-down';
+  } else {
+    const pct = (cur - prev) / prev * 100;
+    if (pct > 200) {
+      // 大幅増加は倍率
+      const x = (cur / prev).toFixed(1);
+      el.textContent = `×${x}倍`;
+      el.className = 'delta-badge delta-up';
+    } else {
+      el.textContent = `↑${pct.toFixed(1)}%`;
+      el.className = 'delta-badge delta-up';
+    }
+  }
 }
 
 function renderAgreement(data) {
