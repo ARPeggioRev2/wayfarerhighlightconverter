@@ -6,6 +6,7 @@
 <title>Wayfarer データコンバーター</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
@@ -37,31 +38,37 @@ body {
   position: sticky; top: 0; z-index: 40;
   background: var(--surface);
   border-bottom: 1px solid var(--rule);
-  padding: 0 20px;
+  display: flex; align-items: center; justify-content: center;
   height: 52px;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
 }
-.topbar-brand { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.topbar-inner {
+  width: 100%; max-width: 640px;
+  padding: 0 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+@media (min-width: 400px) { .topbar-inner { padding: 0 20px; } }
+.topbar-brand { display: flex; align-items: center; min-width: 0; flex-shrink: 1; }
 .brand-name {
   font-size: 13px; font-weight: 700; color: var(--ink);
   white-space: nowrap; letter-spacing: -0.02em;
+  overflow: hidden; text-overflow: ellipsis;
 }
 .brand-name span { color: var(--orange); }
-.brand-tag {
-  font-family: var(--mono); font-size: 9px; font-weight: 500;
-  color: var(--ink-3); letter-spacing: 0.06em; text-transform: uppercase;
-  white-space: nowrap; display: none;
-}
-@media (min-width: 500px) { .brand-tag { display: block; } }
-.topbar-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.topbar-actions { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-  height: 34px; padding: 0 14px;
-  font-family: var(--sans); font-size: 12px; font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  height: 32px; padding: 0 8px;
+  font-family: var(--sans); font-size: 11px; font-weight: 600;
   border-radius: 6px; border: none; cursor: pointer;
   transition: background 0.12s, opacity 0.12s; white-space: nowrap;
   -webkit-appearance: none;
 }
+@media (min-width: 400px) {
+  .btn { height: 34px; padding: 0 12px; font-size: 12px; gap: 5px; }
+  .topbar-actions { gap: 6px; }
+}
+.btn-icon-only { width: 32px; padding: 0; flex-shrink: 0; }
+@media (min-width: 400px) { .btn-icon-only { width: 34px; } }
 .btn:active { opacity: 0.8; }
 .btn-fill   { background: var(--orange); color: #fff; }
 .btn-fill:hover { background: #d4620f; }
@@ -69,16 +76,16 @@ body {
 .btn-outline:hover { background: var(--bg); }
 
 /* ===== PAGE ===== */
-.page { max-width: 640px; margin: 0 auto; padding: 28px 20px 64px; }
+.page { max-width: 640px; margin: 0 auto; padding: 20px 16px 64px; }
 
 /* ===== MONTH STRIP ===== */
 .month-strip-wrap {
   display: flex; align-items: stretch;
   border-bottom: 1px solid var(--rule);
-  margin-bottom: 28px;
+  margin-bottom: 20px;
 }
 .month-strip-btn {
-  flex-shrink: 0; width: 36px;
+  flex-shrink: 0; width: 32px;
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; color: var(--ink-3);
   background: none; border: none; cursor: pointer;
@@ -93,21 +100,19 @@ body {
 }
 .month-strip::-webkit-scrollbar { display: none; }
 .m-tab {
-  flex-shrink: 0;
-  padding: 10px 16px;
+  flex-shrink: 0; padding: 8px 12px;
   font-family: var(--mono); font-size: 11px; font-weight: 500;
   color: var(--ink-3);
   background: none; border: none; border-bottom: 2px solid transparent;
   cursor: pointer; transition: color 0.12s, border-color 0.12s;
-  margin-bottom: -1px;
-  -webkit-appearance: none;
+  margin-bottom: -1px; -webkit-appearance: none;
 }
 .m-tab:hover { color: var(--ink); }
 .m-tab.active { color: var(--orange); border-bottom-color: var(--orange); font-weight: 600; }
 
 /* ===== EMPTY ===== */
 .empty {
-  padding: 72px 24px; text-align: center;
+  padding: 60px 20px; text-align: center;
   border: 1px dashed var(--rule); border-radius: 10px; background: var(--surface);
 }
 .empty-eyebrow {
@@ -118,85 +123,137 @@ body {
 .empty-body { font-size: 13px; color: var(--ink-3); line-height: 1.7; max-width: 300px; margin: 0 auto 20px; }
 
 /* ===== DATA SHEET ===== */
-.sheet { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.sheet {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+}
+.sheet.is-exporting {
+  width: 540px !important;
+  aspect-ratio: 3 / 4 !important;
+  padding: 32px 28px !important;
+  border: none !important; border-radius: 0 !important; box-shadow: none !important;
+  display: flex !important; flex-direction: column !important;
+  justify-content: space-between !important;
+  background: #ffffff !important;
+}
 
 .sheet-header {
-  padding: 18px 20px 14px;
+  padding: 16px 16px 12px;
   border-bottom: 1px solid var(--rule);
-  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
-  flex-wrap: wrap;
+  display: flex; flex-direction: column; gap: 10px;
 }
-.sheet-month {
-  font-size: 20px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); line-height: 1.1;
+@media (min-width: 480px) { .sheet-header { padding: 18px 20px 14px; } }
+.sheet.is-exporting .sheet-header { padding: 0 0 16px 0 !important; border-bottom: 1px solid var(--rule) !important; }
+
+.sheet-header-top {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; width: 100%;
 }
-.sheet-month-sub { font-size: 11px; color: var(--ink-3); margin-top: 3px; font-weight: 400; }
-.sheet-meta { display: flex; align-items: center; gap: 16px; }
-.agr-label { font-family: var(--mono); font-size: 10px; color: var(--ink-3); letter-spacing: 0.04em; }
-.agr-value { font-family: var(--mono); font-size: 13px; font-weight: 600; color: var(--orange); }
+.sheet-header-bottom {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; flex-wrap: wrap;
+}
+
+.sheet-month { font-size: 20px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); line-height: 1.1; }
+.sheet.is-exporting .sheet-month { font-size: 24px !important; }
+.sheet-month-sub { font-size: 11px; color: var(--ink-3); margin-top: 4px; font-weight: 400; }
+.sheet.is-exporting .sheet-month-sub { display: none !important; }
+
+.sheet-meta { display: flex; align-items: center; gap: 12px; }
+.agr-label { font-size: 10px; color: var(--ink-3); }
+.agr-value { font-size: 13px; font-weight: 700; color: var(--orange); }
+.sheet.is-exporting .agr-value { font-size: 15px !important; }
+
 .btn-del {
-  display: inline-flex; align-items: center; gap: 5px;
+  display: inline-flex; align-items: center; gap: 4px;
   font-family: var(--sans); font-size: 11px; font-weight: 600;
   color: var(--ink-3); background: none; border: none; cursor: pointer;
-  padding: 4px 0; transition: color 0.12s; -webkit-appearance: none;
+  padding: 4px 6px; border-radius: 4px; transition: color 0.12s, background 0.12s; -webkit-appearance: none;
 }
-.btn-del:hover { color: #dc2626; }
+.btn-del:hover { color: #dc2626; background: #fee2e2; }
+.sheet.is-exporting .btn-del { display: none !important; }
 
 /* ===== METRIC ROWS ===== */
 .metric-row {
   display: grid; grid-template-columns: 1fr auto;
   align-items: center;
-  padding: 0 20px;
-  min-height: 52px;
+  padding: 0 16px; min-height: 48px;
   border-bottom: 1px solid var(--rule);
-  position: relative;
   transition: background 0.1s;
 }
+@media (min-width: 480px) { .metric-row { padding: 0 20px; } }
+.sheet.is-exporting .metric-row { padding: 0 8px !important; min-height: 46px !important; }
 .metric-row:last-child { border-bottom: none; }
-.metric-row:hover { background: var(--bg); }
-.metric-row.found { border-left: 2px solid var(--orange); padding-left: 18px; }
+.metric-row.found { border-left: 2px solid var(--orange); padding-left: 14px; }
+@media (min-width: 480px) { .metric-row.found { padding-left: 18px; } }
+.sheet.is-exporting .metric-row.found { border-left: none !important; padding-left: 8px !important; }
 .metric-row.missing { border-left: 2px solid transparent; }
 
 .metric-label {
   font-size: 13px; font-weight: 500; color: var(--ink-2);
   display: flex; align-items: center; gap: 8px; min-width: 0;
 }
+.sheet.is-exporting .metric-label { font-size: 14px !important; color: var(--ink) !important; }
+
 .status-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
 .dot-found   { background: var(--green); }
 .dot-missing { background: var(--rule); }
+.sheet.is-exporting .status-dot { display: none !important; }
 
+.metric-input-wrap { display: flex; justify-content: flex-end; align-items: center; }
 .metric-input {
-  font-family: var(--sans); font-size: 16px; font-weight: 600;
+  font-family: var(--sans); font-size: 15px; font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--ink); text-align: right;
-  width: 120px; background: transparent;
+  width: 100px; background: transparent;
   border: 1px solid transparent; border-radius: 5px;
-  padding: 6px 8px; outline: none;
+  padding: 4px 6px; outline: none;
   transition: background 0.12s, border-color 0.12s;
   -webkit-appearance: none;
 }
+@media (min-width: 480px) { .metric-input { font-size: 16px; width: 120px; padding: 6px 8px; } }
 .metric-input:hover { border-color: var(--rule); background: var(--surface); }
 .metric-input:focus { border-color: var(--orange); background: var(--surface); box-shadow: 0 0 0 3px rgba(235,110,21,0.1); }
 
-/* 比較モード */
-.metric-row.comparing { grid-template-columns: 1fr 76px 100px 56px; }
-.compare-val {
-  font-family: var(--sans); font-size: 14px; font-weight: 500;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-3); text-align: right; padding: 0 6px;
+.export-val-text {
+  display: none; font-family: var(--sans); font-size: 16px; font-weight: 700;
+  font-variant-numeric: tabular-nums; color: var(--ink); text-align: right;
 }
+.sheet.is-exporting .metric-input { display: none !important; }
+.sheet.is-exporting .export-val-text { display: block !important; }
+
+/* 比較モード */
+.metric-row.comparing { grid-template-columns: 1fr 75px 90px 55px; }
+@media (min-width: 480px) { .metric-row.comparing { grid-template-columns: 1fr 80px 100px 60px; } }
+.sheet.is-exporting .metric-row.comparing { grid-template-columns: 1fr 90px 100px 70px !important; }
+
+.compare-val {
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3); text-align: right; padding: 0 4px;
+}
+@media (min-width: 480px) { .compare-val { font-size: 14px; padding: 0 6px; } }
+.sheet.is-exporting .compare-val { font-size: 15px !important; }
+
 .delta-badge {
   font-family: var(--sans); font-size: 11px; font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  text-align: right; white-space: nowrap;
+  font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap;
 }
+.sheet.is-exporting .delta-badge { font-size: 12px !important; }
 .delta-up   { color: var(--orange); }
 .delta-down { color: var(--ink-3); }
 .delta-none { color: var(--rule); }
+
 .col-header {
-  display: none; grid-template-columns: 1fr 80px 110px 58px;
-  padding: 6px 20px 6px;
-  border-bottom: 1px solid var(--rule);
-  background: var(--bg);
+  display: none; grid-template-columns: 1fr 75px 90px 55px;
+  padding: 8px 16px; border-bottom: 1px solid var(--rule); background: var(--bg);
+}
+@media (min-width: 480px) { .col-header { grid-template-columns: 1fr 80px 100px 60px; padding: 8px 20px; } }
+.sheet.is-exporting .col-header {
+  grid-template-columns: 1fr 90px 100px 70px !important;
+  padding: 8px !important; background: #f4f3ef !important;
+  border-radius: 6px; margin-bottom: 4px;
 }
 .col-header.show { display: grid; }
 .col-header span {
@@ -206,34 +263,48 @@ body {
 .col-header span:first-child { text-align: left; }
 
 /* 比較セレクト */
-.compare-select-wrap {
-  display: flex; align-items: center; gap: 6px;
-}
+.compare-select-wrap { display: flex; align-items: center; gap: 6px; }
 .compare-label {
   font-family: var(--mono); font-size: 10px; font-weight: 600;
   color: var(--ink-3); letter-spacing: 0.06em; text-transform: uppercase;
 }
 .compare-select {
-  font-family: var(--mono); font-size: 12px; font-weight: 600;
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
   color: var(--ink); background: var(--bg);
   border: 1px solid var(--rule); border-radius: 5px;
   padding: 4px 6px; outline: none; cursor: pointer;
   -webkit-appearance: none; appearance: none;
   padding-right: 20px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239a9a94' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 6px center;
+  background-repeat: no-repeat; background-position: right 6px center;
 }
-.compare-select:focus { border-color: var(--orange); }
+.compare-text-export {
+  display: none; font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--orange);
+}
+.sheet.is-exporting .compare-select,
+.sheet.is-exporting .compare-label { display: none !important; }
+.sheet.is-exporting .compare-text-export { display: inline-block !important; }
+
+/* フッター */
 .sheet-footer {
-  padding: 10px 20px;
-  border-top: 1px solid var(--rule);
-  display: flex; gap: 16px; background: var(--bg);
+  padding: 10px 16px; border-top: 1px solid var(--rule);
+  display: flex; justify-content: space-between; align-items: center; background: var(--bg);
 }
+@media (min-width: 480px) { .sheet-footer { padding: 10px 20px; } }
+.sheet.is-exporting .sheet-footer {
+  background: transparent !important; border-top: 1px solid var(--rule) !important; padding: 12px 0 0 0 !important;
+}
+.legend-group { display: flex; gap: 12px; }
 .legend-item {
   display: flex; align-items: center; gap: 6px;
   font-family: var(--mono); font-size: 10px; color: var(--ink-3);
 }
+.sheet.is-exporting .legend-group { display: none !important; }
+.export-watermark {
+  display: none; font-family: var(--sans); font-size: 11px; font-weight: 700;
+  color: var(--ink-3); letter-spacing: 0.02em;
+}
+.sheet.is-exporting .export-watermark { display: block !important; }
 
 /* ===== MODAL ===== */
 .overlay {
@@ -248,21 +319,16 @@ body {
   border-radius: 14px 14px 0 0; padding: 24px 20px 32px;
   display: flex; flex-direction: column;
   max-height: 90vh; overflow-y: auto;
-  animation: slide-up 0.2s ease;
-  -webkit-overflow-scrolling: touch;
+  animation: slide-up 0.2s ease; -webkit-overflow-scrolling: touch;
 }
-@media (min-width: 500px) {
-  .modal { border-radius: 14px; padding: 28px; max-height: 85vh; }
-}
+@media (min-width: 500px) { .modal { border-radius: 14px; padding: 28px; max-height: 85vh; } }
 @keyframes slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
 .modal-handle { width: 36px; height: 4px; background: var(--rule); border-radius: 99px; margin: 0 auto 20px; flex-shrink: 0; }
 @media (min-width: 500px) { .modal-handle { display: none; } }
 .modal-title { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 6px; flex-shrink: 0; }
 .modal-desc  { font-size: 12px; color: var(--ink-3); line-height: 1.7; margin-bottom: 16px; flex-shrink: 0; }
 .modal-textarea {
-  width: 100%;
-  height: 28vh;
-  min-height: 100px;
+  width: 100%; height: 28vh; min-height: 100px;
   padding: 14px; background: var(--bg); border: 1px solid var(--rule); border-radius: 8px;
   font-family: var(--mono); font-size: 16px; line-height: 1.65;
   color: var(--ink); resize: none; outline: none; transition: border-color 0.12s;
@@ -271,7 +337,6 @@ body {
 .modal-textarea:focus { border-color: var(--orange); }
 .modal-actions { display: flex; gap: 8px; margin-top: 16px; flex-shrink: 0; }
 .modal-actions .btn { flex: 1; height: 42px; font-size: 13px; }
-
 
 .confirm-box {
   background: var(--surface); border-radius: 14px;
@@ -291,45 +356,51 @@ body {
   transform: translateX(-50%) translateY(6px);
   background: var(--ink); color: #fff;
   font-family: var(--mono); font-size: 11px; font-weight: 500;
-  padding: 9px 16px; border-radius: 6px; letter-spacing: 0.02em;
+  padding: 9px 16px; border-radius: 6px;
   opacity: 0; transition: opacity 0.18s, transform 0.18s;
   pointer-events: none; z-index: 200; white-space: nowrap;
   display: flex; align-items: center; gap: 8px;
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 .toast-mark { color: var(--orange); }
+
+/* 画像プレビュー */
+.img-preview-box { text-align: center; margin-top: 10px; }
+.img-preview-box img { max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--rule); }
 </style>
 </head>
 <body>
 
 <!-- TOPBAR -->
 <div class="topbar">
-  <div class="topbar-brand">
-    <div class="brand-name">Wayfarer <span>活動ハイライト</span></div>
-  </div>
-  <div class="topbar-actions">
-    <button class="btn btn-fill" onclick="openImportModal()">
-      <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
-      メール貼付
-    </button>
-    <button class="btn btn-outline" onclick="downloadCSV()">
-      <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      CSV出力
-    </button>
+  <div class="topbar-inner">
+    <div class="topbar-brand">
+      <div class="brand-name">Wayfarer <span>活動ハイライト</span></div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-outline btn-icon-only" onclick="exportAsJPG()" title="SNS向け画像として保存">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      </button>
+      <button class="btn btn-fill" onclick="openImportModal()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+        メール貼付
+      </button>
+      <button class="btn btn-outline" onclick="downloadCSV()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        CSV出力
+      </button>
+    </div>
   </div>
 </div>
 
 <!-- PAGE -->
 <div class="page">
-
-  <!-- MONTH STRIP -->
   <div class="month-strip-wrap" id="monthStripWrap" style="display:none">
     <button class="month-strip-btn" id="btnPrev" onclick="stepMonth(-1)" title="前の月">‹</button>
     <div class="month-strip" id="monthStrip"></div>
     <button class="month-strip-btn" id="btnNext" onclick="stepMonth(1)" title="次の月">›</button>
   </div>
 
-  <!-- EMPTY -->
   <div class="empty" id="emptyState">
     <div class="empty-eyebrow">No data</div>
     <div class="empty-title">データがありません</div>
@@ -337,43 +408,49 @@ body {
     <button class="btn btn-fill" onclick="openImportModal()">メールを読み込む</button>
   </div>
 
-  <!-- DATA SHEET -->
   <div class="sheet" id="sheet" style="display:none">
-    <div class="sheet-header">
-      <div>
-        <div class="sheet-month" id="sheetMonth">----年--月</div>
-        <div class="sheet-month-sub">抽出データ ／ 数値は直接編集できます</div>
-      </div>
-      <div class="sheet-meta">
-        <div class="compare-select-wrap">
-          <span class="compare-label">比較</span>
-          <select class="compare-select" id="compareSelect" onchange="onCompareChange(this.value)">
-            <option value="">—</option>
-          </select>
+    <div>
+      <div class="sheet-header">
+        <div class="sheet-header-top">
+          <div>
+            <div class="sheet-month" id="sheetMonth">----年--月</div>
+            <div class="sheet-month-sub">抽出データ ／ 数値は直接編集できます</div>
+          </div>
+          <button class="btn-del" onclick="requestDelete()">
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            削除
+          </button>
         </div>
-        <div id="agrWrap" style="display:none">
-          <div class="agr-label">Agreement</div>
-          <div class="agr-value" id="agrValue">0%</div>
+        <div class="sheet-header-bottom">
+          <div class="compare-select-wrap">
+            <span class="compare-label">比較</span>
+            <select class="compare-select" id="compareSelect" onchange="onCompareChange(this.value)">
+              <option value="">月を選ぶ</option>
+            </select>
+            <span class="compare-text-export" id="compareTextExport"></span>
+          </div>
+          <div id="agrWrap" style="display:none">
+            <div class="agr-label">Agreement</div>
+            <div class="agr-value" id="agrValue">0%</div>
+          </div>
         </div>
-        <button class="btn-del" onclick="requestDelete()">
-          <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-          削除
-        </button>
       </div>
+      <div class="col-header" id="colHeader">
+        <span>評価項目</span>
+        <span id="colCompare">—</span>
+        <span id="colCurrent">—</span>
+        <span>増減</span>
+      </div>
+      <div id="metricRows"></div>
     </div>
-    <div class="col-header" id="colHeader">
-      <span>評価項目</span>
-      <span id="colCompare">—</span>
-      <span id="colCurrent">—</span>
-      <span>増減</span>
-    </div>
-    <div id="metricRows"></div>
     <div class="sheet-footer">
-      <div class="legend-item"><span class="status-dot dot-found"></span>抽出済み</div>
-      <div class="legend-item"><span class="status-dot dot-missing"></span>未検出（手入力可）</div>
+      <div class="legend-group">
+        <div class="legend-item"><span class="status-dot dot-found"></span>抽出済み</div>
+        <div class="legend-item"><span class="status-dot dot-missing"></span>未検出（手入力可）</div>
+      </div>
+      <div class="export-watermark">Wayfarer活動ハイライト</div>
     </div>
   </div>
-
 </div>
 
 <footer style="max-width:640px;margin:0 auto;padding:0 20px 40px;border-top:1px solid var(--rule);margin-top:40px;">
@@ -382,6 +459,8 @@ body {
     入力されたデータはお使いのブラウザ内にのみ保存され、外部へ送信されることはありません。
   </p>
 </footer>
+
+<!-- IMPORT MODAL -->
 <div class="overlay" id="importOverlay" onclick="overlayClick(event,'importOverlay')">
   <div class="modal">
     <div class="modal-handle"></div>
@@ -399,16 +478,29 @@ body {
   </div>
 </div>
 
-<!-- CSV PREVIEW MODAL -->
+<!-- CSV MODAL -->
 <div class="overlay" id="csvOverlay" onclick="overlayClick(event,'csvOverlay')">
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">CSVデータ</div>
-    <div class="modal-desc">下のテキストを全選択してコピーし、メモアプリなどに貼り付けて .csv として保存してください。</div>
+    <div class="modal-desc">下のテキストをコピーし、メモアプリなどに貼り付けて .csv として保存してください。</div>
     <textarea class="modal-textarea" id="csvPreview" readonly></textarea>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="document.getElementById('csvOverlay').classList.remove('show')">閉じる</button>
       <button class="btn btn-fill" id="copyBtn" onclick="copyCSV()">コピー</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE PREVIEW MODAL -->
+<div class="overlay" id="imgOverlay" onclick="overlayClick(event,'imgOverlay')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">画像を保存</div>
+    <div class="modal-desc">下の画像を長押し（または右クリック）して保存してください。</div>
+    <div class="img-preview-box" id="imgPreviewContainer"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('imgOverlay').classList.remove('show')">閉じる</button>
     </div>
   </div>
 </div>
@@ -425,7 +517,6 @@ body {
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"><span class="toast-mark">▸</span><span id="toastText"></span></div>
 
 <script>
@@ -433,7 +524,6 @@ const STORAGE_KEY = 'wayfarer_converter_v4';
 let db = {};
 let currentKey = '';
 let lastFoundIds = new Set();
-
 let compareKey = '';
 
 const METRICS = [
@@ -469,11 +559,9 @@ function render() {
   document.getElementById('sheet').style.display = has ? '' : 'none';
   if (!has) return;
 
-  // 比較セレクトを更新
   const years = [...new Set(keys.map(k => ky(k)))];
   const showYear = years.length > 1;
   const sel = document.getElementById('compareSelect');
-  const prevCompare = compareKey;
   sel.innerHTML = `<option value="">${compareKey ? '— なし' : '月を選ぶ'}</option>`;
   keys.filter(k => k !== currentKey).forEach(k => {
     const opt = document.createElement('option');
@@ -481,11 +569,9 @@ function render() {
     opt.textContent = showYear ? `${ky(k)}/${parseInt(km(k))}月` : `${parseInt(km(k))}月`;
     sel.appendChild(opt);
   });
-  // compareKeyが現在月になった場合はリセット
   if (compareKey === currentKey) compareKey = '';
   sel.value = compareKey;
 
-  // 列ヘッダー
   const comparing = !!compareKey;
   document.getElementById('colHeader').classList.toggle('show', comparing);
   if (comparing) {
@@ -495,7 +581,6 @@ function render() {
       showYear ? `${ky(currentKey)}/${parseInt(km(currentKey))}月` : `${parseInt(km(currentKey))}月`;
   }
 
-  // Month tabs — show year only when multiple years exist
   const strip = document.getElementById('monthStrip');
   strip.innerHTML = '';
   keys.forEach(k => {
@@ -507,21 +592,15 @@ function render() {
     strip.appendChild(btn);
   });
 
-  // Header
   document.getElementById('sheetMonth').textContent = `${ky(currentKey)}年${parseInt(km(currentKey))}月`;
-
-  // 矢印ボタンの活性状態
   const idx = keys.indexOf(currentKey);
   document.getElementById('btnPrev').disabled = idx <= 0;
   document.getElementById('btnNext').disabled = idx >= keys.length - 1;
-
-  // アクティブタブをスクロール表示
   setTimeout(() => {
-    const activeTab = document.querySelector('.m-tab.active');
-    if (activeTab) activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    const t = document.querySelector('.m-tab.active');
+    if (t) t.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }, 50);
 
-  // Rows
   const data = db[currentKey] || emptyStats();
   renderRows(data);
   renderAgreement(data);
@@ -537,16 +616,14 @@ function stepMonth(delta) {
   render();
 }
 
-// キーボード矢印キー
 document.addEventListener('keydown', e => {
-  if (document.querySelector('.overlay.show')) return; // モーダル中は無効
+  if (document.querySelector('.overlay.show')) return;
   if (e.key === 'ArrowLeft')  stepMonth(-1);
   if (e.key === 'ArrowRight') stepMonth(1);
 });
 
 function onCompareChange(val) {
   compareKey = val;
-  // 空オプションのラベルを状態に応じて切り替え
   const sel = document.getElementById('compareSelect');
   if (sel.options[0]) sel.options[0].textContent = val ? '— なし' : '月を選ぶ';
   const data = db[currentKey] || emptyStats();
@@ -573,7 +650,6 @@ function renderRows(data) {
     const row = document.createElement('div');
     row.className = 'metric-row ' + (found ? 'found' : 'missing') + (cmpData ? ' comparing' : '');
 
-    // ラベル
     const label = document.createElement('div');
     label.className = 'metric-label';
     const dot = document.createElement('span');
@@ -582,7 +658,6 @@ function renderRows(data) {
     label.appendChild(document.createTextNode(metric.label));
     row.appendChild(label);
 
-    // 比較月の値（読み取り専用）
     if (cmpData) {
       const cmp = document.createElement('div');
       cmp.className = 'compare-val';
@@ -590,34 +665,39 @@ function renderRows(data) {
       row.appendChild(cmp);
     }
 
-    // 現在月の値（編集可能）
+    const wrap = document.createElement('div');
+    wrap.className = 'metric-input-wrap';
     const input = document.createElement('input');
     input.type = 'number'; input.min = '0';
     input.value = data[metric.id] || 0;
     input.className = 'metric-input';
-    if (cmpData) input.style.width = '100px';
+    if (cmpData) input.style.width = '90px';
     input.dataset.id = metric.id;
     input.addEventListener('change', function() {
       const val = Math.max(0, parseInt(this.value) || 0);
       this.value = val;
+      this.nextElementSibling.textContent = val.toLocaleString();
       db[currentKey][this.dataset.id] = val;
       persist();
       renderAgreement(db[currentKey]);
       if (cmpData) {
-        const badge = this.parentElement.querySelector('.delta-badge');
+        const badge = this.parentElement.parentElement.querySelector('.delta-badge');
         if (badge) updateDelta(badge, val, cmpData[metric.id] || 0);
       }
     });
-    row.appendChild(input);
+    const exportTxt = document.createElement('span');
+    exportTxt.className = 'export-val-text';
+    exportTxt.textContent = (data[metric.id] || 0).toLocaleString();
+    wrap.appendChild(input);
+    wrap.appendChild(exportTxt);
+    row.appendChild(wrap);
 
-    // 増減バッジ
     if (cmpData) {
       const badge = document.createElement('div');
       badge.className = 'delta-badge';
       updateDelta(badge, data[metric.id] || 0, cmpData[metric.id] || 0);
       row.appendChild(badge);
     }
-
     container.appendChild(row);
   });
 }
@@ -630,21 +710,12 @@ function updateDelta(el, cur, prev) {
     el.textContent = 'NEW'; el.className = 'delta-badge delta-up'; return;
   }
   if (cur < prev) {
-    // 減少は常に%
-    const pct = ((prev - cur) / prev * 100).toFixed(1);
-    el.textContent = `↓${pct}%`;
+    el.textContent = `↓${((prev - cur) / prev * 100).toFixed(1)}%`;
     el.className = 'delta-badge delta-down';
   } else {
     const pct = (cur - prev) / prev * 100;
-    if (pct > 200) {
-      // 大幅増加は倍率
-      const x = (cur / prev).toFixed(1);
-      el.textContent = `×${x}倍`;
-      el.className = 'delta-badge delta-up';
-    } else {
-      el.textContent = `↑${pct.toFixed(1)}%`;
-      el.className = 'delta-badge delta-up';
-    }
+    el.textContent = pct > 200 ? `×${(cur/prev).toFixed(1)}倍` : `↑${pct.toFixed(1)}%`;
+    el.className = 'delta-badge delta-up';
   }
 }
 
@@ -653,8 +724,74 @@ function renderAgreement(data) {
   if (data && data.reviewed > 0) {
     document.getElementById('agrValue').textContent = ((data.agreed_num / data.reviewed) * 100).toFixed(1) + '%';
     wrap.style.display = '';
-  } else {
-    wrap.style.display = 'none';
+  } else { wrap.style.display = 'none'; }
+}
+
+// ===== JPG EXPORT =====
+async function exportAsJPG() {
+  const sheet = document.getElementById('sheet');
+  if (!sheet || sheet.style.display === 'none') { showToast('出力するデータがありません'); return; }
+
+  showToast('画像を生成中...');
+
+  // 比較テキスト設定
+  const sel = document.getElementById('compareSelect');
+  const exportTxt = document.getElementById('compareTextExport');
+  exportTxt.textContent = (compareKey && sel.value)
+    ? `vs ${sel.options[sel.selectedIndex].text}` : '';
+
+  sheet.classList.add('is-exporting');
+
+  try {
+    // フォント読み込みを待ってからキャプチャ
+    await document.fonts.ready;
+
+    const canvas = await html2canvas(sheet, {
+      scale: 2.5,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      windowWidth: 540,
+      onclone: doc => {
+        // 外部フォントのフェッチを避けるためシステムフォントに切り替え
+        const style = doc.createElement('style');
+        style.textContent = '* { font-family: -apple-system, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif !important; }';
+        doc.head.appendChild(style);
+      }
+    });
+
+    // canvas.toBlob() でfetch不要に（WKWebView対応）
+    const imgBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    const imgURI = canvas.toDataURL('image/jpeg', 0.92);
+    const fileName = `Wayfarer_${currentKey}${compareKey ? '_vs_' + compareKey : ''}.jpg`;
+    const imgFile = new File([imgBlob], fileName, { type: 'image/jpeg' });
+
+    // 1: Web Share API（iOS含む）
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [imgFile] })) {
+      try { await navigator.share({ files: [imgFile], title: 'Wayfarer活動ハイライト' }); return; }
+      catch(e) { if (e.name === 'AbortError') return; }
+    }
+
+    // 2: デスクトップダウンロード
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+    if (!isIOS) {
+      const a = document.createElement('a');
+      a.href = imgURI; a.download = fileName;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      showToast('画像を保存しました'); return;
+    }
+
+    // 3: モーダルで長押し保存（iOS fallback）
+    document.getElementById('imgPreviewContainer').innerHTML =
+      `<img src="${imgURI}" alt="Wayfarer Report">`;
+    document.getElementById('imgOverlay').classList.add('show');
+
+  } catch(err) {
+    console.error(err);
+    showToast('画像生成に失敗しました');
+  } finally {
+    sheet.classList.remove('is-exporting');
   }
 }
 
@@ -718,7 +855,8 @@ function extractMailData() {
 function requestDelete() {
   if (!currentKey) return;
   document.getElementById('confirmTitle').textContent = 'データを削除';
-  document.getElementById('confirmBody').textContent = `${ky(currentKey)}年${parseInt(km(currentKey))}月のデータを削除します。この操作は元に戻せません。`;
+  document.getElementById('confirmBody').textContent =
+    `${ky(currentKey)}年${parseInt(km(currentKey))}月のデータを削除します。この操作は元に戻せません。`;
   document.getElementById('confirmOverlay').classList.add('show');
 }
 function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); }
@@ -753,13 +891,13 @@ async function downloadCSV() {
   const blob = new Blob([_csvText], { type: 'text/csv' });
   const file = new File([blob], fileName, { type: 'text/csv' });
 
-  // 1: iOS ネイティブシェアシート
+  // 1: Web Share（iOS）
   if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
     try { await navigator.share({ files: [file], title: fileName }); return; }
-    catch (e) { if (e.name === 'AbortError') return; }
+    catch(e) { if (e.name === 'AbortError') return; }
   }
 
-  // 2: デスクトップダウンロード（iOS/WKWebViewではスキップ）
+  // 2: デスクトップダウンロード（修正: blob URLを使う）
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
   if (!isIOS) {
     try {
@@ -771,7 +909,7 @@ async function downloadCSV() {
     } catch(e) {}
   }
 
-  // 3: コピーモーダル（最終フォールバック）
+  // 3: コピーモーダル
   showCSVModal();
 }
 
@@ -785,19 +923,10 @@ function showCSVModal() {
   }, 100);
 }
 
-async function copyCSV() {
-  const btn = document.getElementById('copyBtn');
-  copyText(_csvText.replace(/^\uFEFF/, ''), btn);
-}
-
-async function copyKeyword() {
-  const kw = 'from:nianticlabs.com "Wayfarer活動ハイライト"';
-  const btn = document.getElementById('kwCopyBtn');
-  copyText(kw, btn);
-}
+function copyCSV() { copyText(_csvText.replace(/^\uFEFF/, ''), document.getElementById('copyBtn')); }
+function copyKeyword() { copyText('from:nianticlabs.com "Wayfarer活動ハイライト"', document.getElementById('kwCopyBtn')); }
 
 function copyText(text, btn) {
-  // execCommand fallback（WKWebView対応）
   const ta = document.createElement('textarea');
   ta.value = text;
   ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
@@ -805,14 +934,12 @@ function copyText(text, btn) {
   ta.focus(); ta.select();
   try {
     document.execCommand('copy');
-    if (btn) {
-      btn.textContent = '✓ コピー済み';
-      setTimeout(() => { btn.textContent = 'コピー'; }, 2000);
-    }
+    if (btn) { btn.textContent = '✓ コピー済み'; setTimeout(() => { btn.textContent = 'コピー'; }, 2000); }
   } catch(e) { showToast('コピーに失敗しました'); }
   document.body.removeChild(ta);
 }
 
+// ===== MODAL =====
 function openImportModal() {
   const now = new Date();
   const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
