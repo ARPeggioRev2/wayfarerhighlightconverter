@@ -767,22 +767,22 @@ async function exportAsJPG() {
     const fileName = `Wayfarer_${currentKey}${compareKey ? '_vs_' + compareKey : ''}.jpg`;
     const imgFile = new File([imgBlob], fileName, { type: 'image/jpeg' });
 
-    // 1: Web Share API（iOS含む）
+    // 1: Web Share API（iOS・Android対応環境）
     if (navigator.share && navigator.canShare && navigator.canShare({ files: [imgFile] })) {
       try { await navigator.share({ files: [imgFile], title: 'Wayfarer活動ハイライト' }); return; }
       catch(e) { if (e.name === 'AbortError') return; }
     }
 
-    // 2: デスクトップダウンロード
-    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-    if (!isIOS) {
+    // 2: デスクトップダウンロード（モバイルWebViewでは動かないためスキップ）
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (!isMobile) {
       const a = document.createElement('a');
       a.href = imgURI; a.download = fileName;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       showToast('画像を保存しました'); return;
     }
 
-    // 3: モーダルで長押し保存（iOS fallback）
+    // 3: モーダルで長押し保存（iOS・Android fallback）
     document.getElementById('imgPreviewContainer').innerHTML =
       `<img src="${imgURI}" alt="Wayfarer Report">`;
     document.getElementById('imgOverlay').classList.add('show');
