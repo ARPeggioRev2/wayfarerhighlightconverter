@@ -10,17 +10,25 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
+  /* UI chrome */
   --orange:    #eb6e15;
   --orange-dim:#fef3ea;
-  --bg:        #f9f8f6;
-  --surface:   #ffffff;
-  --ink:       #111110;
-  --ink-2:     #5a5a55;
+
+  /* ベースカラー */
+  --bg:        #F4F4F4;
+  --surface:   #FFFFFF;
+  --ink:       #333333;
+  --ink-2:     #666663;
   --ink-3:     #9a9a94;
-  --rule:      #e8e7e3;
-  --green:     #16a34a;
-  --sans:      'Noto Sans JP', sans-serif;
-  --mono:      'Noto Sans JP', sans-serif;
+  --rule:      #e4e4e0;
+
+  /* カテゴリカラー */
+  --color-exploration: #00B0FF;
+  --color-wayspot:     #FF4500;
+  --color-edit:        #00D284;
+
+  --sans: 'Noto Sans JP', sans-serif;
+  --mono: 'Noto Sans JP', sans-serif;
 }
 html { font-size: 16px; }
 body {
@@ -185,9 +193,12 @@ body {
 @media (min-width: 480px) { .metric-row { padding: 0 20px; } }
 .sheet.is-exporting .metric-row { padding: 0 8px !important; min-height: 46px !important; }
 .metric-row:last-child { border-bottom: none; }
-.metric-row.found { border-left: 2px solid var(--orange); padding-left: 14px; }
+.metric-row.found { padding-left: 14px; }
 @media (min-width: 480px) { .metric-row.found { padding-left: 18px; } }
-.sheet.is-exporting .metric-row.found { border-left: none !important; padding-left: 8px !important; }
+.metric-row.found-exploration { border-left: 2px solid var(--color-exploration); }
+.metric-row.found-wayspot     { border-left: 2px solid var(--color-wayspot); }
+.metric-row.found-edit        { border-left: 2px solid var(--color-edit); }
+.sheet.is-exporting .metric-row.found { padding-left: 8px !important; }
 .metric-row.missing { border-left: 2px solid transparent; }
 
 .metric-label {
@@ -196,10 +207,12 @@ body {
 }
 .sheet.is-exporting .metric-label { font-size: 14px !important; color: var(--ink) !important; }
 
-.status-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-.dot-found   { background: var(--green); }
-.dot-missing { background: var(--rule); }
-.sheet.is-exporting .status-dot { display: none !important; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-exploration { background: var(--color-exploration); }
+.dot-wayspot     { background: var(--color-wayspot); }
+.dot-edit        { background: var(--color-edit); }
+.dot-missing     { background: var(--rule); }
+.sheet.is-exporting .status-dot { width: 7px; height: 7px; }
 
 .metric-input-wrap { display: flex; justify-content: flex-end; align-items: center; }
 .metric-input {
@@ -222,6 +235,15 @@ body {
 }
 .sheet.is-exporting .metric-input { display: none !important; }
 .sheet.is-exporting .export-val-text { display: block !important; }
+
+/* エクスポート時：抽出済み数値をカテゴリカラーで表示 */
+.sheet.is-exporting .metric-row.found-exploration .export-val-text { color: var(--color-exploration); }
+.sheet.is-exporting .metric-row.found-wayspot     .export-val-text { color: var(--color-wayspot); }
+.sheet.is-exporting .metric-row.found-edit        .export-val-text { color: var(--color-edit); }
+/* エクスポート時：ラベルもカテゴリカラーに */
+.sheet.is-exporting .metric-row.found-exploration .metric-label { color: var(--color-exploration) !important; }
+.sheet.is-exporting .metric-row.found-wayspot     .metric-label { color: var(--color-wayspot) !important; }
+.sheet.is-exporting .metric-row.found-edit        .metric-label { color: var(--color-edit) !important; }
 
 /* 比較モード */
 .metric-row.comparing { grid-template-columns: 1fr 75px 90px 55px; }
@@ -445,8 +467,8 @@ body {
     </div>
     <div class="sheet-footer">
       <div class="legend-group">
-        <div class="legend-item"><span class="status-dot dot-found"></span>抽出済み</div>
-        <div class="legend-item"><span class="status-dot dot-missing"></span>未検出（手入力可）</div>
+        <div class="legend-item"><span class="status-dot dot-exploration"></span>値あり</div>
+        <div class="legend-item"><span class="status-dot dot-missing"></span>未入力</div>
       </div>
       <div class="export-watermark">Wayfarer活動ハイライト</div>
     </div>
@@ -527,14 +549,14 @@ let lastFoundIds = new Set();
 let compareKey = '';
 
 const METRICS = [
-  { id: 'visits',       label: '訪問数' },
-  { id: 'players',      label: 'プレイヤー人数' },
-  { id: 'approved',     label: '承認された候補' },
-  { id: 'new_wayspots', label: 'New Wayspots' },
-  { id: 'new_areas',    label: '追加された新エリア' },
-  { id: 'edits',        label: '承認された編集' },
-  { id: 'reviewed',     label: '審査件数' },
-  { id: 'agreed_num',   label: 'アグリーメント' },
+  { id: 'visits',       label: '訪問数',           cat: 'exploration' },
+  { id: 'players',      label: 'プレイヤー人数',   cat: 'exploration' },
+  { id: 'approved',     label: '承認された候補',   cat: 'wayspot'     },
+  { id: 'new_wayspots', label: 'New Wayspots',     cat: 'wayspot'     },
+  { id: 'new_areas',    label: '追加された新エリア',cat: 'exploration' },
+  { id: 'edits',        label: '承認された編集',   cat: 'edit'        },
+  { id: 'reviewed',     label: '審査件数',         cat: 'wayspot'     },
+  { id: 'agreed_num',   label: 'アグリーメント',   cat: 'wayspot'     },
 ];
 
 const emptyStats = () => ({ visits:0, players:0, approved:0, new_wayspots:0, new_areas:0, edits:0, reviewed:0, agreed_num:0 });
@@ -646,14 +668,15 @@ function renderRows(data) {
   const cmpData = compareKey ? (db[compareKey] || emptyStats()) : null;
 
   METRICS.forEach(metric => {
-    const found = lastFoundIds.has(metric.id);
+    const hasValue = (data[metric.id] || 0) > 0;
     const row = document.createElement('div');
-    row.className = 'metric-row ' + (found ? 'found' : 'missing') + (cmpData ? ' comparing' : '');
+    row.className = 'metric-row found found-' + metric.cat
+      + (cmpData ? ' comparing' : '');
 
     const label = document.createElement('div');
     label.className = 'metric-label';
     const dot = document.createElement('span');
-    dot.className = 'status-dot ' + (found ? 'dot-found' : 'dot-missing');
+    dot.className = 'status-dot ' + (hasValue ? `dot-${metric.cat}` : 'dot-missing');
     label.appendChild(dot);
     label.appendChild(document.createTextNode(metric.label));
     row.appendChild(label);
