@@ -338,12 +338,15 @@ body {
 .overlay.show { display: flex; }
 .modal {
   background: var(--surface); width: 100%; max-width: 480px;
-  border-radius: 14px 14px 0 0; padding: 24px 20px 32px;
+  border-radius: 14px 14px 0 0;
+  padding: 24px 20px calc(32px + env(safe-area-inset-bottom, 0px));
   display: flex; flex-direction: column;
   max-height: 90vh; overflow-y: auto;
   animation: slide-up 0.2s ease; -webkit-overflow-scrolling: touch;
 }
-@media (min-width: 500px) { .modal { border-radius: 14px; padding: 28px; max-height: 85vh; } }
+@media (min-width: 500px) {
+  .modal { border-radius: 14px; padding: 28px; max-height: 85vh; }
+}
 @keyframes slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
 .modal-handle { width: 36px; height: 4px; background: var(--rule); border-radius: 99px; margin: 0 auto 20px; flex-shrink: 0; }
 @media (min-width: 500px) { .modal-handle { display: none; } }
@@ -519,10 +522,11 @@ body {
   <div class="modal">
     <div class="modal-handle"></div>
     <div class="modal-title">画像を保存</div>
-    <div class="modal-desc">下の画像を長押し（または右クリック）して保存してください。</div>
+    <div class="modal-desc" id="imgModalDesc">下の画像を長押し（または右クリック）して保存してください。</div>
     <div class="img-preview-box" id="imgPreviewContainer"></div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="document.getElementById('imgOverlay').classList.remove('show')">閉じる</button>
+      <button class="btn btn-fill" id="imgShareBtn" onclick="shareImage()">共有して保存</button>
     </div>
   </div>
 </div>
@@ -750,6 +754,23 @@ function renderAgreement(data) {
   } else { wrap.style.display = 'none'; }
 }
 
+let _lastImgBlob = null;
+let _lastImgFileName = '';
+
+async function shareImage() {
+  if (!_lastImgBlob) return;
+  const file = new File([_lastImgBlob], _lastImgFileName, { type: 'image/jpeg' });
+  // Web Share API（Android Chrome等で動作）
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Wayfarer活動ハイライト' }); return; }
+    catch(e) { if (e.name === 'AbortError') return; }
+  }
+  // フォールバック：新しいタブで開く（長押しで保存可能）
+  const url = URL.createObjectURL(_lastImgBlob);
+  window.open(url, '_blank');
+  showToast('新しいタブで開きました。長押しして保存してください。');
+}
+
 // ===== JPG EXPORT =====
 async function exportAsJPG() {
   const sheet = document.getElementById('sheet');
@@ -805,9 +826,15 @@ async function exportAsJPG() {
       showToast('画像を保存しました'); return;
     }
 
-    // 3: モーダルで長押し保存（iOS・Android fallback）
+    // 3: モーダルで保存（iOS：長押し / Android：共有ボタン）
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    document.getElementById('imgModalDesc').textContent = isAndroid
+      ? '「共有して保存」から写真として保存してください。'
+      : '下の画像を長押しして保存してください。';
     document.getElementById('imgPreviewContainer').innerHTML =
-      `<img src="${imgURI}" alt="Wayfarer Report">`;
+      `<img src="${imgURI}" alt="Wayfarer Report" id="exportedImg">`;
+    _lastImgBlob = imgBlob;
+    _lastImgFileName = fileName;
     document.getElementById('imgOverlay').classList.add('show');
 
   } catch(err) {
@@ -920,9 +947,9 @@ async function downloadCSV() {
     catch(e) { if (e.name === 'AbortError') return; }
   }
 
-  // 2: デスクトップダウンロード（修正: blob URLを使う）
-  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
-  if (!isIOS) {
+  // 2: デスクトップダウンロード（iOS・Androidはスキップ）
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (!isMobile) {
     try {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -932,7 +959,7 @@ async function downloadCSV() {
     } catch(e) {}
   }
 
-  // 3: コピーモーダル
+  // 3: コピーモーダル（iOS・Android共通）
   showCSVModal();
 }
 
