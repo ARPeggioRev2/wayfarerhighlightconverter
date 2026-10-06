@@ -401,6 +401,7 @@ body {
   <div class="topbar-inner">
     <div class="topbar-brand">
       <div class="brand-name">Wayfarer <span>活動ハイライト</span></div>
+      <div id="versionBadge" style="font-size:9px;font-weight:700;color:var(--ink-3);font-family:var(--mono);margin-left:8px;white-space:nowrap;flex-shrink:0;"></div>
     </div>
     <div class="topbar-actions">
       <button class="btn btn-outline btn-icon-only" onclick="exportAsJPG()" title="SNS向け画像として保存">
@@ -481,7 +482,8 @@ body {
 <footer style="max-width:640px;margin:0 auto;padding:0 20px 40px;border-top:1px solid var(--rule);margin-top:40px;">
   <p style="font-size:11px;color:var(--ink-3);line-height:1.8;padding-top:20px;">
     本ツールは運営とは無関係の非公式ツールです。いかなる企業・団体による公認・後援も受けていません。ご利用はご自身の責任においてお願いします。<br>
-    入力されたデータはお使いのブラウザ内にのみ保存され、外部へ送信されることはありません。
+    入力されたデータはお使いのブラウザ内にのみ保存され、外部へ送信されることはありません。<br><br>
+    動作確認済：iOS Safari のみ
   </p>
 </footer>
 
@@ -547,6 +549,7 @@ body {
 
 <script>
 const STORAGE_KEY = 'wayfarer_converter_v4';
+const VERSION = 'β 0.2';
 let db = {};
 let currentKey = '';
 let lastFoundIds = new Set();
@@ -570,6 +573,7 @@ const ky = k => k.split('-')[0];
 const km = k => k.split('-')[1];
 
 function init() {
+  document.getElementById('versionBadge').textContent = VERSION;
   try { const s = localStorage.getItem(STORAGE_KEY); if (s) db = JSON.parse(s); } catch(e) {}
   const keys = sortedKeys();
   if (keys.length) currentKey = keys[keys.length - 1];
