@@ -1,4 +1,1028 @@
-<!DOCTYPE html>
+<!DOCTYPE html><!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Wayfarer データコンバーター</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  /* UI chrome */
+  --orange:    #eb6e15;
+  --orange-dim:#fef3ea;
+
+  /* ベースカラー */
+  --bg:        #F4F4F4;
+  --surface:   #FFFFFF;
+  --ink:       #333333;
+  --ink-2:     #666663;
+  --ink-3:     #9a9a94;
+  --rule:      #e4e4e0;
+
+  /* カテゴリカラー */
+  --color-exploration: #00B0FF;
+  --color-wayspot:     #FF4500;
+  --color-edit:        #00D284;
+
+  --sans: 'Noto Sans JP', sans-serif;
+  --mono: 'Noto Sans JP', sans-serif;
+}
+html { font-size: 16px; }
+body {
+  font-family: var(--sans);
+  font-weight: 500;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ===== TOPBAR ===== */
+.topbar {
+  position: sticky; top: 0; z-index: 40;
+  background: var(--surface);
+  border-bottom: 1px solid var(--rule);
+  display: flex; align-items: center; justify-content: center;
+  height: 52px;
+}
+.topbar-inner {
+  width: 100%; max-width: 640px;
+  padding: 0 12px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+@media (min-width: 400px) { .topbar-inner { padding: 0 20px; } }
+.topbar-brand { display: flex; align-items: center; min-width: 0; flex-shrink: 1; }
+.brand-name {
+  font-size: 13px; font-weight: 700; color: var(--ink);
+  white-space: nowrap; letter-spacing: -0.02em;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.brand-name span { color: var(--orange); }
+.topbar-actions { display: flex; gap: 4px; flex-shrink: 0; align-items: center; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 4px;
+  height: 32px; padding: 0 8px;
+  font-family: var(--sans); font-size: 11px; font-weight: 600;
+  border-radius: 6px; border: none; cursor: pointer;
+  transition: background 0.12s, opacity 0.12s; white-space: nowrap;
+  -webkit-appearance: none;
+}
+@media (min-width: 400px) {
+  .btn { height: 34px; padding: 0 12px; font-size: 12px; gap: 5px; }
+  .topbar-actions { gap: 6px; }
+}
+.btn-icon-only { width: 32px; padding: 0; flex-shrink: 0; }
+@media (min-width: 400px) { .btn-icon-only { width: 34px; } }
+.btn:active { opacity: 0.8; }
+.btn-fill   { background: var(--orange); color: #fff; }
+.btn-fill:hover { background: #d4620f; }
+.btn-outline { background: transparent; color: var(--ink-2); border: 1px solid var(--rule); }
+.btn-outline:hover { background: var(--bg); }
+
+/* ===== PAGE ===== */
+.page { max-width: 640px; margin: 0 auto; padding: 20px 16px 64px; }
+
+/* ===== MONTH STRIP ===== */
+.month-strip-wrap {
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid var(--rule);
+  margin-bottom: 20px;
+}
+.month-strip-btn {
+  flex-shrink: 0; width: 32px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; color: var(--ink-3);
+  background: none; border: none; cursor: pointer;
+  transition: color 0.12s; -webkit-appearance: none;
+  padding-bottom: 1px;
+}
+.month-strip-btn:hover { color: var(--orange); }
+.month-strip-btn:disabled { color: var(--rule); cursor: default; }
+.month-strip {
+  display: flex; gap: 0; overflow-x: auto; flex: 1;
+  scrollbar-width: none;
+}
+.month-strip::-webkit-scrollbar { display: none; }
+.m-tab {
+  flex-shrink: 0; padding: 8px 12px;
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  color: var(--ink-3);
+  background: none; border: none; border-bottom: 2px solid transparent;
+  cursor: pointer; transition: color 0.12s, border-color 0.12s;
+  margin-bottom: -1px; -webkit-appearance: none;
+}
+.m-tab:hover { color: var(--ink); }
+.m-tab.active { color: var(--orange); border-bottom-color: var(--orange); font-weight: 600; }
+
+/* ===== EMPTY ===== */
+.empty {
+  padding: 60px 20px; text-align: center;
+  border: 1px dashed var(--rule); border-radius: 10px; background: var(--surface);
+}
+.empty-eyebrow {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  color: var(--orange); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px;
+}
+.empty-title { font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+.empty-body { font-size: 13px; color: var(--ink-3); line-height: 1.7; max-width: 300px; margin: 0 auto 20px; }
+
+/* ===== DATA SHEET ===== */
+.sheet {
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+}
+.sheet.is-exporting {
+  width: 540px !important;
+  aspect-ratio: 3 / 4 !important;
+  padding: 32px 28px !important;
+  border: none !important; border-radius: 0 !important; box-shadow: none !important;
+  display: flex !important; flex-direction: column !important;
+  justify-content: space-between !important;
+  background: #ffffff !important;
+}
+
+.sheet-header {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--rule);
+  display: flex; flex-direction: column; gap: 10px;
+}
+@media (min-width: 480px) { .sheet-header { padding: 18px 20px 14px; } }
+.sheet.is-exporting .sheet-header { padding: 0 0 16px 0 !important; border-bottom: 1px solid var(--rule) !important; }
+
+.sheet-header-top {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; width: 100%;
+}
+.sheet-header-bottom {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; flex-wrap: wrap;
+}
+
+.sheet-month { font-size: 20px; font-weight: 700; letter-spacing: -0.03em; color: var(--ink); line-height: 1.1; }
+.sheet.is-exporting .sheet-month { font-size: 24px !important; }
+.sheet-month-sub { font-size: 11px; color: var(--ink-3); margin-top: 4px; font-weight: 400; }
+.sheet.is-exporting .sheet-month-sub { display: none !important; }
+
+.sheet-meta { display: flex; align-items: center; gap: 12px; }
+.agr-label { font-size: 10px; color: var(--ink-3); }
+.agr-value { font-size: 13px; font-weight: 700; color: var(--orange); }
+.sheet.is-exporting .agr-value { font-size: 15px !important; }
+
+.btn-del {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: var(--sans); font-size: 11px; font-weight: 600;
+  color: var(--ink-3); background: none; border: none; cursor: pointer;
+  padding: 4px 6px; border-radius: 4px; transition: color 0.12s, background 0.12s; -webkit-appearance: none;
+}
+.btn-del:hover { color: #dc2626; background: #fee2e2; }
+.sheet.is-exporting .btn-del { display: none !important; }
+
+/* ===== METRIC ROWS ===== */
+.metric-row {
+  display: grid; grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 0 16px; min-height: 48px;
+  border-bottom: 1px solid var(--rule);
+  transition: background 0.1s;
+}
+@media (min-width: 480px) { .metric-row { padding: 0 20px; } }
+.sheet.is-exporting .metric-row { padding: 0 8px !important; min-height: 46px !important; }
+.metric-row:last-child { border-bottom: none; }
+.metric-row.found { padding-left: 14px; }
+@media (min-width: 480px) { .metric-row.found { padding-left: 18px; } }
+.metric-row.found-exploration { border-left: 2px solid var(--color-exploration); }
+.metric-row.found-wayspot     { border-left: 2px solid var(--color-wayspot); }
+.metric-row.found-edit        { border-left: 2px solid var(--color-edit); }
+.sheet.is-exporting .metric-row.found { padding-left: 8px !important; }
+.metric-row.missing { border-left: 2px solid transparent; }
+
+.metric-label {
+  font-size: 13px; font-weight: 500; color: var(--ink-2);
+  display: flex; align-items: center; gap: 8px; min-width: 0;
+}
+.sheet.is-exporting .metric-label { font-size: 14px !important; color: var(--ink) !important; }
+
+.status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-exploration { background: var(--color-exploration); }
+.dot-wayspot     { background: var(--color-wayspot); }
+.dot-edit        { background: var(--color-edit); }
+.dot-missing     { background: var(--rule); }
+.sheet.is-exporting .status-dot { width: 7px; height: 7px; }
+
+.metric-input-wrap { display: flex; justify-content: flex-end; align-items: center; }
+.metric-input {
+  font-family: var(--sans); font-size: 15px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink); text-align: right;
+  width: 100px; background: transparent;
+  border: 1px solid transparent; border-radius: 5px;
+  padding: 4px 6px; outline: none;
+  transition: background 0.12s, border-color 0.12s;
+  -webkit-appearance: none;
+}
+@media (min-width: 480px) { .metric-input { font-size: 16px; width: 120px; padding: 6px 8px; } }
+.metric-input:hover { border-color: var(--rule); background: var(--surface); }
+.metric-input:focus { border-color: var(--orange); background: var(--surface); box-shadow: 0 0 0 3px rgba(235,110,21,0.1); }
+
+.export-val-text {
+  display: none; font-family: var(--sans); font-size: 16px; font-weight: 700;
+  font-variant-numeric: tabular-nums; color: var(--ink); text-align: right;
+}
+.sheet.is-exporting .metric-input { display: none !important; }
+.sheet.is-exporting .export-val-text { display: block !important; }
+
+/* エクスポート時：抽出済み数値をカテゴリカラーで表示 */
+.sheet.is-exporting .metric-row.found-exploration .export-val-text { color: var(--color-exploration); }
+.sheet.is-exporting .metric-row.found-wayspot     .export-val-text { color: var(--color-wayspot); }
+.sheet.is-exporting .metric-row.found-edit        .export-val-text { color: var(--color-edit); }
+/* エクスポート時：ラベルもカテゴリカラーに */
+.sheet.is-exporting .metric-row.found-exploration .metric-label { color: var(--color-exploration) !important; }
+.sheet.is-exporting .metric-row.found-wayspot     .metric-label { color: var(--color-wayspot) !important; }
+.sheet.is-exporting .metric-row.found-edit        .metric-label { color: var(--color-edit) !important; }
+
+/* 比較モード */
+.metric-row.comparing { grid-template-columns: 1fr 75px 90px 55px; }
+@media (min-width: 480px) { .metric-row.comparing { grid-template-columns: 1fr 80px 100px 60px; } }
+.sheet.is-exporting .metric-row.comparing { grid-template-columns: 1fr 90px 100px 70px !important; }
+
+.compare-val {
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3); text-align: right; padding: 0 4px;
+}
+@media (min-width: 480px) { .compare-val { font-size: 14px; padding: 0 6px; } }
+.sheet.is-exporting .compare-val { font-size: 15px !important; }
+
+.delta-badge {
+  font-family: var(--sans); font-size: 11px; font-weight: 700;
+  font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap;
+}
+.sheet.is-exporting .delta-badge { font-size: 12px !important; }
+.delta-up   { color: var(--orange); }
+.delta-down { color: var(--ink-3); }
+.delta-none { color: var(--rule); }
+
+.col-header {
+  display: none; grid-template-columns: 1fr 75px 90px 55px;
+  padding: 8px 16px; border-bottom: 1px solid var(--rule); background: var(--bg);
+}
+@media (min-width: 480px) { .col-header { grid-template-columns: 1fr 80px 100px 60px; padding: 8px 20px; } }
+.sheet.is-exporting .col-header {
+  grid-template-columns: 1fr 90px 100px 70px !important;
+  padding: 8px !important; background: #f4f3ef !important;
+  border-radius: 6px; margin-bottom: 4px;
+}
+.col-header.show { display: grid; }
+.col-header span {
+  font-family: var(--mono); font-size: 9px; font-weight: 600;
+  color: var(--ink-3); text-align: right; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.col-header span:first-child { text-align: left; }
+
+/* 比較セレクト */
+.compare-select-wrap { display: flex; align-items: center; gap: 6px; }
+.compare-label {
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  color: var(--ink-3); letter-spacing: 0.06em; text-transform: uppercase;
+}
+.compare-select {
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  color: var(--ink); background: var(--bg);
+  border: 1px solid var(--rule); border-radius: 5px;
+  padding: 4px 6px; outline: none; cursor: pointer;
+  -webkit-appearance: none; appearance: none;
+  padding-right: 20px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%239a9a94' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 6px center;
+}
+.compare-text-export {
+  display: none; font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--orange);
+}
+.sheet.is-exporting .compare-select,
+.sheet.is-exporting .compare-label { display: none !important; }
+.sheet.is-exporting .compare-text-export { display: inline-block !important; }
+
+/* フッター */
+.sheet-footer {
+  padding: 10px 16px; border-top: 1px solid var(--rule);
+  display: flex; justify-content: space-between; align-items: center; background: var(--bg);
+}
+@media (min-width: 480px) { .sheet-footer { padding: 10px 20px; } }
+.sheet.is-exporting .sheet-footer {
+  background: transparent !important; border-top: 1px solid var(--rule) !important; padding: 12px 0 0 0 !important;
+}
+.legend-group { display: flex; gap: 12px; }
+.legend-item {
+  display: flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 10px; color: var(--ink-3);
+}
+.sheet.is-exporting .legend-group { display: none !important; }
+.export-watermark {
+  display: none; font-family: var(--sans); font-size: 11px; font-weight: 700;
+  color: var(--ink-3); letter-spacing: 0.02em;
+}
+.sheet.is-exporting .export-watermark { display: block !important; }
+
+/* ===== MODAL ===== */
+.overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(17,17,16,0.5); backdrop-filter: blur(6px);
+  z-index: 60; align-items: flex-end; justify-content: center;
+}
+@media (min-width: 500px) { .overlay { align-items: center; padding: 20px; } }
+.overlay.show { display: flex; }
+.modal {
+  background: var(--surface); width: 100%; max-width: 480px;
+  border-radius: 14px 14px 0 0;
+  padding: 24px 20px calc(32px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column;
+  max-height: 90vh; overflow-y: auto;
+  animation: slide-up 0.2s ease; -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 500px) {
+  .modal { border-radius: 14px; padding: 28px; max-height: 85vh; }
+}
+@keyframes slide-up { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+.modal-handle { width: 36px; height: 4px; background: var(--rule); border-radius: 99px; margin: 0 auto 20px; flex-shrink: 0; }
+@media (min-width: 500px) { .modal-handle { display: none; } }
+.modal-title { font-size: 15px; font-weight: 700; color: var(--ink); margin-bottom: 6px; flex-shrink: 0; }
+.modal-desc  { font-size: 12px; color: var(--ink-3); line-height: 1.7; margin-bottom: 16px; flex-shrink: 0; }
+.modal-textarea {
+  width: 100%; height: 28vh; min-height: 100px;
+  padding: 14px; background: var(--bg); border: 1px solid var(--rule); border-radius: 8px;
+  font-family: var(--mono); font-size: 16px; line-height: 1.65;
+  color: var(--ink); resize: none; outline: none; transition: border-color 0.12s;
+  overflow-y: auto; flex-shrink: 0;
+}
+.modal-textarea:focus { border-color: var(--orange); }
+.modal-actions { display: flex; gap: 8px; margin-top: 16px; flex-shrink: 0; }
+.modal-actions .btn { flex: 1; height: 42px; font-size: 13px; }
+
+.confirm-box {
+  background: var(--surface); border-radius: 14px;
+  padding: 24px 20px; max-width: 310px; width: 100%; text-align: center;
+  animation: slide-up 0.18s ease;
+}
+.confirm-title { font-size: 14px; font-weight: 700; color: var(--ink); margin-bottom: 8px; }
+.confirm-body  { font-size: 12px; color: var(--ink-3); line-height: 1.7; margin-bottom: 20px; }
+.confirm-actions { display: flex; gap: 8px; }
+.confirm-actions .btn { flex: 1; height: 40px; font-size: 12px; }
+.btn-danger { background: #fee2e2; color: #dc2626; border: none; }
+.btn-danger:hover { background: #fecaca; }
+
+/* ===== TOAST ===== */
+.toast {
+  position: fixed; bottom: 20px; left: 50%;
+  transform: translateX(-50%) translateY(6px);
+  background: var(--ink); color: #fff;
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  padding: 9px 16px; border-radius: 6px;
+  opacity: 0; transition: opacity 0.18s, transform 0.18s;
+  pointer-events: none; z-index: 200; white-space: nowrap;
+  display: flex; align-items: center; gap: 8px;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast-mark { color: var(--orange); }
+
+/* 画像プレビュー */
+.img-preview-box { text-align: center; margin-top: 10px; }
+.img-preview-box img { max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--rule); }
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="topbar-brand">
+      <div class="brand-name">Wayfarer <span>活動ハイライト</span></div>
+      <div id="versionBadge" style="font-size:9px;font-weight:700;color:var(--ink-3);font-family:var(--mono);margin-left:8px;white-space:nowrap;flex-shrink:0;"></div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-outline btn-icon-only" onclick="exportAsJPG()" title="SNS向け画像として保存">
+        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+      </button>
+      <button class="btn btn-fill" onclick="openImportModal()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+        メール貼付
+      </button>
+      <button class="btn btn-outline" onclick="downloadCSV()">
+        <svg width="13" height="13" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        CSV出力
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE -->
+<div class="page">
+  <div class="month-strip-wrap" id="monthStripWrap" style="display:none">
+    <button class="month-strip-btn" id="btnPrev" onclick="stepMonth(-1)" title="前の月">‹</button>
+    <div class="month-strip" id="monthStrip"></div>
+    <button class="month-strip-btn" id="btnNext" onclick="stepMonth(1)" title="次の月">›</button>
+  </div>
+
+  <div class="empty" id="emptyState">
+    <div class="empty-eyebrow">No data</div>
+    <div class="empty-title">データがありません</div>
+    <div class="empty-body">「メール貼付」から Wayfarer ハイライトメールの本文を貼り付けてください。</div>
+    <button class="btn btn-fill" onclick="openImportModal()">メールを読み込む</button>
+  </div>
+
+  <div class="sheet" id="sheet" style="display:none">
+    <div>
+      <div class="sheet-header">
+        <div class="sheet-header-top">
+          <div>
+            <div class="sheet-month" id="sheetMonth">----年--月</div>
+            <div class="sheet-month-sub">抽出データ ／ 数値は直接編集できます</div>
+          </div>
+          <button class="btn-del" onclick="requestDelete()">
+            <svg width="12" height="12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            削除
+          </button>
+        </div>
+        <div class="sheet-header-bottom">
+          <div class="compare-select-wrap">
+            <span class="compare-label">比較</span>
+            <select class="compare-select" id="compareSelect" onchange="onCompareChange(this.value)">
+              <option value="">月を選ぶ</option>
+            </select>
+            <span class="compare-text-export" id="compareTextExport"></span>
+          </div>
+          <div id="agrWrap" style="display:none">
+            <div class="agr-label">Agreement</div>
+            <div class="agr-value" id="agrValue">0%</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-header" id="colHeader">
+        <span>評価項目</span>
+        <span id="colCompare">—</span>
+        <span id="colCurrent">—</span>
+        <span>増減</span>
+      </div>
+      <div id="metricRows"></div>
+    </div>
+    <div class="sheet-footer">
+      <div class="legend-group">
+        <div class="legend-item"><span class="status-dot dot-exploration"></span>値あり</div>
+        <div class="legend-item"><span class="status-dot dot-missing"></span>未入力</div>
+      </div>
+      <div class="export-watermark">Wayfarer活動ハイライト</div>
+    </div>
+  </div>
+</div>
+
+<footer style="max-width:640px;margin:0 auto;padding:0 20px 40px;border-top:1px solid var(--rule);margin-top:40px;">
+  <p style="font-size:11px;color:var(--ink-3);line-height:1.8;padding-top:20px;">
+    本ツールは運営とは無関係の非公式ツールです。いかなる企業・団体による公認・後援も受けていません。ご利用はご自身の責任においてお願いします。<br>
+    入力されたデータはお使いのブラウザ内にのみ保存され、外部へ送信されることはありません。<br><br>
+    動作確認済：iOS Safari のみ
+  </p>
+</footer>
+
+<!-- IMPORT MODAL -->
+<div class="overlay" id="importOverlay" onclick="overlayClick(event,'importOverlay')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">メール本文を読み込む</div>
+    <div class="modal-desc">Wayfarerのハイライトメール（活動ハイライト／投稿ハイライト）を全文コピーし、そのまま貼り付けてください。</div>
+    <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--rule);border-radius:7px;padding:9px 12px;margin-bottom:14px;flex-shrink:0;">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--ink-2);flex:1;word-break:break-all;line-height:1.4;" id="kwText"></span>
+      <button id="kwCopyBtn" onclick="copyKeyword()" style="flex-shrink:0;font-family:var(--sans);font-size:11px;font-weight:600;color:var(--orange);background:none;border:none;cursor:pointer;padding:2px 0;white-space:nowrap;">コピー</button>
+    </div>
+    <textarea class="modal-textarea" id="mailInput"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeImportModal()">キャンセル</button>
+      <button class="btn btn-fill" onclick="extractMailData()">抽出する</button>
+    </div>
+  </div>
+</div>
+
+<!-- CSV MODAL -->
+<div class="overlay" id="csvOverlay" onclick="overlayClick(event,'csvOverlay')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">CSVデータ</div>
+    <div class="modal-desc">下のテキストをコピーし、メモアプリなどに貼り付けて .csv として保存してください。</div>
+    <textarea class="modal-textarea" id="csvPreview" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('csvOverlay').classList.remove('show')">閉じる</button>
+      <button class="btn btn-fill" id="copyBtn" onclick="copyCSV()">コピー</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE PREVIEW MODAL -->
+<div class="overlay" id="imgOverlay" onclick="overlayClick(event,'imgOverlay')">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">画像を保存</div>
+    <div class="modal-desc" id="imgModalDesc">下の画像を長押し（または右クリック）して保存してください。</div>
+    <div class="img-preview-box" id="imgPreviewContainer"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('imgOverlay').classList.remove('show')">閉じる</button>
+      <button class="btn btn-fill" id="imgShareBtn" onclick="shareImage()">共有して保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM -->
+<div class="overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-title" id="confirmTitle">削除しますか？</div>
+    <div class="confirm-body" id="confirmBody"></div>
+    <div class="confirm-actions">
+      <button class="btn btn-outline" onclick="closeConfirm()">キャンセル</button>
+      <button class="btn btn-danger" onclick="executeDelete()">削除</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span class="toast-mark">▸</span><span id="toastText"></span></div>
+
+<script>
+const STORAGE_KEY = 'wayfarer_converter_v4';
+const VERSION = 'β 0.2';
+const MAIL_SEARCH_QUERY = 'from:(nianticlabs.com OR email@wayfarer.scopely.com) ("Wayfarer活動ハイライト" OR "Wayfarer投稿ハイライト")';
+let db = {};
+let currentKey = '';
+let lastFoundIds = new Set();
+let compareKey = '';
+
+const METRICS = [
+  { id: 'visits',       label: '訪問数',           cat: 'exploration' },
+  { id: 'players',      label: 'プレイヤー人数',   cat: 'exploration' },
+  { id: 'approved',     label: '承認された候補',   cat: 'wayspot'     },
+  { id: 'new_wayspots', label: 'New Wayspots',     cat: 'wayspot'     },
+  { id: 'new_areas',    label: '追加された新エリア',cat: 'exploration' },
+  { id: 'edits',        label: '承認された編集',   cat: 'edit'        },
+  { id: 'reviewed',     label: '審査件数',         cat: 'wayspot'     },
+  { id: 'agreed_num',   label: 'アグリーメント',   cat: 'wayspot'     },
+];
+
+const emptyStats = () => ({ visits:0, players:0, approved:0, new_wayspots:0, new_areas:0, edits:0, reviewed:0, agreed_num:0 });
+const persist = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+const sortedKeys = () => Object.keys(db).sort();
+const ky = k => k.split('-')[0];
+const km = k => k.split('-')[1];
+
+function init() {
+  document.getElementById('versionBadge').textContent = VERSION;
+  document.getElementById('kwText').textContent = MAIL_SEARCH_QUERY;
+  try { const s = localStorage.getItem(STORAGE_KEY); if (s) db = JSON.parse(s); } catch(e) {}
+  const keys = sortedKeys();
+  if (keys.length) currentKey = keys[keys.length - 1];
+  render();
+}
+
+// ===== RENDER =====
+function render() {
+  const keys = sortedKeys();
+  const has = keys.length > 0;
+  document.getElementById('monthStripWrap').style.display = has ? '' : 'none';
+  document.getElementById('emptyState').style.display = has ? 'none' : '';
+  document.getElementById('sheet').style.display = has ? '' : 'none';
+  if (!has) return;
+
+  const years = [...new Set(keys.map(k => ky(k)))];
+  const showYear = years.length > 1;
+  const sel = document.getElementById('compareSelect');
+  sel.innerHTML = `<option value="">${compareKey ? '— なし' : '月を選ぶ'}</option>`;
+  keys.filter(k => k !== currentKey).forEach(k => {
+    const opt = document.createElement('option');
+    opt.value = k;
+    opt.textContent = showYear ? `${ky(k)}/${parseInt(km(k))}月` : `${parseInt(km(k))}月`;
+    sel.appendChild(opt);
+  });
+  if (compareKey === currentKey) compareKey = '';
+  sel.value = compareKey;
+
+  const comparing = !!compareKey;
+  document.getElementById('colHeader').classList.toggle('show', comparing);
+  if (comparing) {
+    document.getElementById('colCompare').textContent =
+      showYear ? `${ky(compareKey)}/${parseInt(km(compareKey))}月` : `${parseInt(km(compareKey))}月`;
+    document.getElementById('colCurrent').textContent =
+      showYear ? `${ky(currentKey)}/${parseInt(km(currentKey))}月` : `${parseInt(km(currentKey))}月`;
+  }
+
+  const strip = document.getElementById('monthStrip');
+  strip.innerHTML = '';
+  keys.forEach(k => {
+    const btn = document.createElement('button');
+    btn.className = 'm-tab' + (k === currentKey ? ' active' : '');
+    btn.textContent = showYear ? `${ky(k)}/${parseInt(km(k))}月` : `${parseInt(km(k))}月`;
+    btn.title = k;
+    btn.onclick = () => { currentKey = k; lastFoundIds = new Set(); render(); };
+    strip.appendChild(btn);
+  });
+
+  document.getElementById('sheetMonth').textContent = `${ky(currentKey)}年${parseInt(km(currentKey))}月`;
+  const idx = keys.indexOf(currentKey);
+  document.getElementById('btnPrev').disabled = idx <= 0;
+  document.getElementById('btnNext').disabled = idx >= keys.length - 1;
+  setTimeout(() => {
+    const t = document.querySelector('.m-tab.active');
+    if (t) t.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  }, 50);
+
+  const data = db[currentKey] || emptyStats();
+  renderRows(data);
+  renderAgreement(data);
+}
+
+function stepMonth(delta) {
+  const keys = sortedKeys();
+  const idx = keys.indexOf(currentKey);
+  const next = idx + delta;
+  if (next < 0 || next >= keys.length) return;
+  currentKey = keys[next];
+  lastFoundIds = new Set();
+  render();
+}
+
+document.addEventListener('keydown', e => {
+  if (document.querySelector('.overlay.show')) return;
+  if (e.key === 'ArrowLeft')  stepMonth(-1);
+  if (e.key === 'ArrowRight') stepMonth(1);
+});
+
+function onCompareChange(val) {
+  compareKey = val;
+  const sel = document.getElementById('compareSelect');
+  if (sel.options[0]) sel.options[0].textContent = val ? '— なし' : '月を選ぶ';
+  const data = db[currentKey] || emptyStats();
+  const years = [...new Set(sortedKeys().map(k => ky(k)))];
+  const showYear = years.length > 1;
+  const comparing = !!compareKey;
+  document.getElementById('colHeader').classList.toggle('show', comparing);
+  if (comparing) {
+    document.getElementById('colCompare').textContent =
+      showYear ? `${ky(compareKey)}/${parseInt(km(compareKey))}月` : `${parseInt(km(compareKey))}月`;
+    document.getElementById('colCurrent').textContent =
+      showYear ? `${ky(currentKey)}/${parseInt(km(currentKey))}月` : `${parseInt(km(currentKey))}月`;
+  }
+  renderRows(data);
+}
+
+function renderRows(data) {
+  const container = document.getElementById('metricRows');
+  container.innerHTML = '';
+  const cmpData = compareKey ? (db[compareKey] || emptyStats()) : null;
+
+  METRICS.forEach(metric => {
+    const hasValue = (data[metric.id] || 0) > 0;
+    const row = document.createElement('div');
+    row.className = 'metric-row found found-' + metric.cat
+      + (cmpData ? ' comparing' : '');
+
+    const label = document.createElement('div');
+    label.className = 'metric-label';
+    const dot = document.createElement('span');
+    dot.className = 'status-dot ' + (hasValue ? `dot-${metric.cat}` : 'dot-missing');
+    label.appendChild(dot);
+    label.appendChild(document.createTextNode(metric.label));
+    row.appendChild(label);
+
+    if (cmpData) {
+      const cmp = document.createElement('div');
+      cmp.className = 'compare-val';
+      cmp.textContent = (cmpData[metric.id] || 0).toLocaleString();
+      row.appendChild(cmp);
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'metric-input-wrap';
+    const input = document.createElement('input');
+    input.type = 'number'; input.min = '0';
+    input.value = data[metric.id] || 0;
+    input.className = 'metric-input';
+    if (cmpData) input.style.width = '90px';
+    input.dataset.id = metric.id;
+    input.addEventListener('change', function() {
+      const val = Math.max(0, parseInt(this.value) || 0);
+      this.value = val;
+      this.nextElementSibling.textContent = val.toLocaleString();
+      db[currentKey][this.dataset.id] = val;
+      persist();
+      renderAgreement(db[currentKey]);
+      if (cmpData) {
+        const badge = this.parentElement.parentElement.querySelector('.delta-badge');
+        if (badge) updateDelta(badge, val, cmpData[metric.id] || 0);
+      }
+    });
+    const exportTxt = document.createElement('span');
+    exportTxt.className = 'export-val-text';
+    exportTxt.textContent = (data[metric.id] || 0).toLocaleString();
+    wrap.appendChild(input);
+    wrap.appendChild(exportTxt);
+    row.appendChild(wrap);
+
+    if (cmpData) {
+      const badge = document.createElement('div');
+      badge.className = 'delta-badge';
+      updateDelta(badge, data[metric.id] || 0, cmpData[metric.id] || 0);
+      row.appendChild(badge);
+    }
+    container.appendChild(row);
+  });
+}
+
+function updateDelta(el, cur, prev) {
+  if (prev === 0 && cur === 0) {
+    el.textContent = '—'; el.className = 'delta-badge delta-none'; return;
+  }
+  if (prev === 0) {
+    el.textContent = 'NEW'; el.className = 'delta-badge delta-up'; return;
+  }
+  if (cur < prev) {
+    el.textContent = `↓${((prev - cur) / prev * 100).toFixed(1)}%`;
+    el.className = 'delta-badge delta-down';
+  } else {
+    const pct = (cur - prev) / prev * 100;
+    el.textContent = pct > 200 ? `×${(cur/prev).toFixed(1)}倍` : `↑${pct.toFixed(1)}%`;
+    el.className = 'delta-badge delta-up';
+  }
+}
+
+function renderAgreement(data) {
+  const wrap = document.getElementById('agrWrap');
+  if (data && data.reviewed > 0) {
+    document.getElementById('agrValue').textContent = ((data.agreed_num / data.reviewed) * 100).toFixed(1) + '%';
+    wrap.style.display = '';
+  } else { wrap.style.display = 'none'; }
+}
+
+let _lastImgBlob = null;
+let _lastImgFileName = '';
+
+async function shareImage() {
+  if (!_lastImgBlob) return;
+  const file = new File([_lastImgBlob], _lastImgFileName, { type: 'image/jpeg' });
+  // Web Share API（Android Chrome等で動作）
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: 'Wayfarer活動ハイライト' }); return; }
+    catch(e) { if (e.name === 'AbortError') return; }
+  }
+  // フォールバック：新しいタブで開く（長押しで保存可能）
+  const url = URL.createObjectURL(_lastImgBlob);
+  window.open(url, '_blank');
+  showToast('新しいタブで開きました。長押しして保存してください。');
+}
+
+// ===== JPG EXPORT =====
+async function exportAsJPG() {
+  const sheet = document.getElementById('sheet');
+  if (!sheet || sheet.style.display === 'none') { showToast('出力するデータがありません'); return; }
+
+  showToast('画像を生成中...');
+
+  // 比較テキスト設定
+  const sel = document.getElementById('compareSelect');
+  const exportTxt = document.getElementById('compareTextExport');
+  exportTxt.textContent = (compareKey && sel.value)
+    ? `vs ${sel.options[sel.selectedIndex].text}` : '';
+
+  sheet.classList.add('is-exporting');
+
+  try {
+    // フォント読み込みを待ってからキャプチャ
+    await document.fonts.ready;
+
+    const canvas = await html2canvas(sheet, {
+      scale: 2.5,
+      backgroundColor: '#ffffff',
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      windowWidth: 540,
+      onclone: doc => {
+        // 外部フォントのフェッチを避けるためシステムフォントに切り替え
+        const style = doc.createElement('style');
+        style.textContent = '* { font-family: -apple-system, "Hiragino Sans", "Yu Gothic", "Meiryo", sans-serif !important; }';
+        doc.head.appendChild(style);
+      }
+    });
+
+    // canvas.toBlob() でfetch不要に（WKWebView対応）
+    const imgBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+    const imgURI = canvas.toDataURL('image/jpeg', 0.92);
+    const fileName = `Wayfarer_${currentKey}${compareKey ? '_vs_' + compareKey : ''}.jpg`;
+    const imgFile = new File([imgBlob], fileName, { type: 'image/jpeg' });
+
+    // 1: Web Share API（iOS・Android対応環境）
+    if (navigator.share && navigator.canShare && navigator.canShare({ files: [imgFile] })) {
+      try { await navigator.share({ files: [imgFile], title: 'Wayfarer活動ハイライト' }); return; }
+      catch(e) { if (e.name === 'AbortError') return; }
+    }
+
+    // 2: デスクトップダウンロード（モバイルWebViewでは動かないためスキップ）
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (!isMobile) {
+      const a = document.createElement('a');
+      a.href = imgURI; a.download = fileName;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      showToast('画像を保存しました'); return;
+    }
+
+    // 3: モーダルで保存（iOS：長押し / Android：共有ボタン）
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    document.getElementById('imgModalDesc').textContent = isAndroid
+      ? '「共有して保存」から写真として保存してください。'
+      : '下の画像を長押しして保存してください。';
+    document.getElementById('imgPreviewContainer').innerHTML =
+      `<img src="${imgURI}" alt="Wayfarer Report" id="exportedImg">`;
+    _lastImgBlob = imgBlob;
+    _lastImgFileName = fileName;
+    document.getElementById('imgOverlay').classList.add('show');
+
+  } catch(err) {
+    console.error(err);
+    showToast('画像生成に失敗しました');
+  } finally {
+    sheet.classList.remove('is-exporting');
+  }
+}
+
+// ===== EXTRACT =====
+function extractMailData() {
+  const text = document.getElementById('mailInput').value.trim();
+  if (!text) return;
+
+  const now = new Date();
+  let targetKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const dm = text.match(/(\d{4})[-\/年](\d{1,2})[-\/月]/);
+  if (dm) targetKey = `${dm[1]}-${dm[2].padStart(2,'0')}`;
+
+  if (!db[targetKey]) db[targetKey] = emptyStats();
+  const data = db[targetKey];
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  const getValueBefore = kw => {
+    for (let i = 1; i < lines.length; i++) {
+      if (lines[i].includes(kw) && /^[\d,]+$/.test(lines[i-1]))
+        return parseInt(lines[i-1].replace(/,/g,''));
+    }
+    return null;
+  };
+  const getValueInline = kw => {
+    const r = new RegExp(`${kw}[\\s：:]*([\\d,]+)|([\\d,]+)[\\s]*${kw}`, 'i');
+    const m = text.match(r);
+    return m ? parseInt((m[1]||m[2]).replace(/,/g,'')) : null;
+  };
+  const extract = kw => getValueBefore(kw) ?? getValueInline(kw);
+
+  const found = new Set();
+  const set = (id, val) => { if (val !== null) { data[id] = val; found.add(id); } };
+
+  set('visits',       extract('訪問数'));
+  set('players',      extract('プレイヤー人数'));
+  set('approved',     extract('承認された候補'));
+  set('new_wayspots', extract('New Wayspots') ?? extract('新たなWayspot') ?? extract('新しいWayspot'));
+  set('new_areas',    extract('追加された新エリア') ?? extract('新エリア'));
+  set('edits',        extract('承認された編集'));
+  set('reviewed',     extract('審査件数'));
+
+  const aLine = lines.find(l => l.includes('意見が一致しました'));
+  if (aLine) {
+    const am = aLine.match(/審査\s*(\d+)\s*件/);
+    if (am) { data.agreed_num = parseInt(am[1]); found.add('agreed_num'); }
+  } else {
+    set('agreed_num', extract('アグリーメント数') ?? extract('審査一致数'));
+  }
+
+  lastFoundIds = found;
+  persist();
+  currentKey = targetKey;
+  document.getElementById('mailInput').value = '';
+  closeImportModal();
+  render();
+  showToast(`${ky(targetKey)}年${parseInt(km(targetKey))}月 — ${found.size}/${METRICS.length}項目取得`);
+}
+
+// ===== DELETE =====
+function requestDelete() {
+  if (!currentKey) return;
+  document.getElementById('confirmTitle').textContent = 'データを削除';
+  document.getElementById('confirmBody').textContent =
+    `${ky(currentKey)}年${parseInt(km(currentKey))}月のデータを削除します。この操作は元に戻せません。`;
+  document.getElementById('confirmOverlay').classList.add('show');
+}
+function closeConfirm() { document.getElementById('confirmOverlay').classList.remove('show'); }
+function executeDelete() {
+  closeConfirm();
+  delete db[currentKey];
+  lastFoundIds = new Set();
+  const keys = sortedKeys();
+  currentKey = keys.length ? keys[keys.length - 1] : '';
+  persist(); render();
+  showToast('削除しました');
+}
+
+// ===== CSV =====
+let _csvText = '';
+
+function buildCSV() {
+  const keys = sortedKeys();
+  if (!keys.length) return '';
+  let csv = '\uFEFF年月,訪問数,プレイヤー人数,承認された候補,New Wayspots,追加された新エリア,承認された編集,審査件数,アグリーメント数\n';
+  keys.forEach(k => {
+    const d = db[k];
+    csv += `${k},${d.visits||0},${d.players||0},${d.approved||0},${d.new_wayspots||0},${d.new_areas||0},${d.edits||0},${d.reviewed||0},${d.agreed_num||0}\n`;
+  });
+  return csv;
+}
+
+async function downloadCSV() {
+  if (!sortedKeys().length) { showToast('データがありません'); return; }
+  _csvText = buildCSV();
+  const fileName = 'Wayfarer_Activity_Report.csv';
+  const blob = new Blob([_csvText], { type: 'text/csv' });
+  const file = new File([blob], fileName, { type: 'text/csv' });
+
+  // 1: Web Share（iOS）
+  if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: fileName }); return; }
+    catch(e) { if (e.name === 'AbortError') return; }
+  }
+
+  // 2: デスクトップダウンロード（iOS・Androidはスキップ）
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+  if (!isMobile) {
+    try {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fileName;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      showToast('CSV出力しました'); return;
+    } catch(e) {}
+  }
+
+  // 3: コピーモーダル（iOS・Android共通）
+  showCSVModal();
+}
+
+function showCSVModal() {
+  document.getElementById('csvPreview').value = _csvText.replace(/^\uFEFF/, '');
+  document.getElementById('csvOverlay').classList.add('show');
+  document.getElementById('copyBtn').textContent = 'コピー';
+  setTimeout(() => {
+    const ta = document.getElementById('csvPreview');
+    ta.focus(); ta.select();
+  }, 100);
+}
+
+function copyCSV() { copyText(_csvText.replace(/^\uFEFF/, ''), document.getElementById('copyBtn')); }
+function copyKeyword() { copyText(MAIL_SEARCH_QUERY, document.getElementById('kwCopyBtn')); }
+
+function copyText(text, btn) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;pointer-events:none;';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try {
+    document.execCommand('copy');
+    if (btn) { btn.textContent = '✓ コピー済み'; setTimeout(() => { btn.textContent = 'コピー'; }, 2000); }
+  } catch(e) { showToast('コピーに失敗しました'); }
+  document.body.removeChild(ta);
+}
+
+// ===== MODAL =====
+function openImportModal() {
+  const now = new Date();
+  const lm = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const ly = lm.getFullYear(), lmo = lm.getMonth() + 1;
+  const lastDay = new Date(ly, lmo, 0).getDate();
+  document.getElementById('mailInput').placeholder =
+    `例：\n${ly}年${lmo}月1日〜${ly}年${lmo}月${lastDay}日\nWayfarer投稿ハイライト\n389389\n訪問数\n389389件訪問しました\n...`;
+  document.getElementById('importOverlay').classList.add('show');
+  setTimeout(() => document.getElementById('mailInput').focus(), 60);
+}
+function closeImportModal() { document.getElementById('importOverlay').classList.remove('show'); }
+function overlayClick(e, id) { if (e.target.id === id) document.getElementById(id).classList.remove('show'); }
+
+// ===== TOAST =====
+let _tt;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  document.getElementById('toastText').textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_tt);
+  _tt = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
