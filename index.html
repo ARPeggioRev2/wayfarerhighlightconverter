@@ -494,7 +494,7 @@ body {
     <div class="modal-title">メール本文を読み込む</div>
     <div class="modal-desc">「Wayfarer活動ハイライト」メールを全文コピーし、そのまま貼り付けてください。</div>
     <div style="display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--rule);border-radius:7px;padding:9px 12px;margin-bottom:14px;flex-shrink:0;">
-      <span style="font-family:var(--mono);font-size:11px;color:var(--ink-2);flex:1;word-break:break-all;line-height:1.4;">from:nianticlabs.com "Wayfarer活動ハイライト"</span>
+      <span style="font-family:var(--mono);font-size:11px;color:var(--ink-2);flex:1;word-break:break-all;line-height:1.4;" id="kwText"></span>
       <button id="kwCopyBtn" onclick="copyKeyword()" style="flex-shrink:0;font-family:var(--sans);font-size:11px;font-weight:600;color:var(--orange);background:none;border:none;cursor:pointer;padding:2px 0;white-space:nowrap;">コピー</button>
     </div>
     <textarea class="modal-textarea" id="mailInput"></textarea>
@@ -550,6 +550,7 @@ body {
 <script>
 const STORAGE_KEY = 'wayfarer_converter_v4';
 const VERSION = 'β 0.2';
+const MAIL_SEARCH_QUERY = 'from:(nianticlabs.com OR email@wayfarer.scopely.com) "Wayfarer活動ハイライト"';
 let db = {};
 let currentKey = '';
 let lastFoundIds = new Set();
@@ -574,6 +575,7 @@ const km = k => k.split('-')[1];
 
 function init() {
   document.getElementById('versionBadge').textContent = VERSION;
+  document.getElementById('kwText').textContent = MAIL_SEARCH_QUERY;
   try { const s = localStorage.getItem(STORAGE_KEY); if (s) db = JSON.parse(s); } catch(e) {}
   const keys = sortedKeys();
   if (keys.length) currentKey = keys[keys.length - 1];
@@ -978,7 +980,7 @@ function showCSVModal() {
 }
 
 function copyCSV() { copyText(_csvText.replace(/^\uFEFF/, ''), document.getElementById('copyBtn')); }
-function copyKeyword() { copyText('from:nianticlabs.com "Wayfarer活動ハイライト"', document.getElementById('kwCopyBtn')); }
+function copyKeyword() { copyText(MAIL_SEARCH_QUERY, document.getElementById('kwCopyBtn')); }
 
 function copyText(text, btn) {
   const ta = document.createElement('textarea');
